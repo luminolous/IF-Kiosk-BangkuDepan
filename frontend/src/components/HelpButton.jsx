@@ -18,7 +18,8 @@ const STEPS = {
     "Cari ruangan atau dosen di kolom pencarian.",
     "Pilih lantai, lalu ketuk ruangan untuk menampilkannya di layar kiosk.",
     "Ketuk \"Semua ruangan\" untuk kembali melihat seluruh lantai.",
-    `Di area sentuh: ${gestureLine.charAt(0).toLowerCase()}${gestureLine.slice(1)}`,
+    "Joystick kiri: tahan untuk maju, mundur, kiri, kanan. Tombol ▲▼: terbang naik dan turun.",
+    "Area kanan: geser untuk memutar pandangan, cubit untuk zoom.",
     "Ketuk \"Selesai\" kalau sudah. Sesi juga berhenti sendiri setelah 1 menit tidak aktif.",
   ],
 };

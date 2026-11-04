@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import * as THREE from "three";
 
-import { panBy, rotateBy, zoomBy } from "../src/lib/cameraMoves.js";
+import { liftBy, panBy, rotateBy, zoomBy } from "../src/lib/cameraMoves.js";
 
 // A camera 20 units back from the origin and 20 up, looking at it: tilted
 // 45°, as the kiosk shows a floor.
@@ -63,4 +63,25 @@ test("rotating keeps the distance to the target, and zoom stays within its limit
   close(camera.position.distanceTo(controls.target), controls.minDistance);
   zoomBy(camera, controls, 1e6);
   close(camera.position.distanceTo(controls.target), controls.maxDistance);
+});
+
+test("lifting moves the camera and its target up together, keeping the view", () => {
+  const { camera, controls } = rig();
+  const before = camera.position.clone().sub(controls.target);
+  liftBy(camera, controls, 100);
+  assert.ok(controls.target.y > 0);
+  const after = camera.position.clone().sub(controls.target);
+  close(after.x, before.x);
+  close(after.y, before.y);
+  close(after.z, before.z);
+});
+
+test("lifting stops at the floor and at the ceiling of the flying range", () => {
+  const { camera, controls } = rig();
+  liftBy(camera, controls, -100);
+  close(controls.target.y, 0);
+  close(camera.position.y, 20);
+  liftBy(camera, controls, 1e6);
+  close(controls.target.y, 60);
+  close(camera.position.y, 80);
 });

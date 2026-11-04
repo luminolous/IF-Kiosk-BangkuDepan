@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, Search, X, LoaderCircle, CheckCircle, ChevronRight } from "lucide-react";
 import { C, DAYS, MENU_FLOORS, EXCLUDE, displayName } from "../lib/constants";
-import { GESTURES, RELAY_URL } from "../lib/config";
+import { RELAY_URL } from "../lib/config";
 import { loadData } from "../lib/data";
 import { search } from "../lib/directory";
 import { HelpButton } from "../components/HelpButton";
@@ -9,19 +9,107 @@ import { HelpButton } from "../components/HelpButton";
 const JS_DAY_TO_ID = ["", ...DAYS, ""];
 const TODAY = JS_DAY_TO_ID[new Date().getDay()] || null;
 
-function CameraControls({ send }) {
+// Drone controls, in pixels per second at full deflection, the same pixels the
+// kiosk's camera moves take.
+const WALK_PX_PER_S = 110;
+const LIFT_PX_PER_S = 90;
+const STICK_SIZE    = 132;
+const THUMB_SIZE    = 56;
+const DEADZONE      = 0.12;
+
+const noSelect = { touchAction: "none", userSelect: "none", WebkitUserSelect: "none", WebkitTouchCallout: "none" };
+
+function Joystick({ onChange }) {
+  const thumb = useRef(null);
+  const active = useRef(null);
+  const reach = (STICK_SIZE - THUMB_SIZE) / 2;
+
+  const update = (e) => {
+    const box = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - (box.left + box.width / 2);
+    const y = e.clientY - (box.top + box.height / 2);
+    const len = Math.hypot(x, y);
+    const held = Math.min(len, reach);
+    const nx = len ? x / len : 0;
+    const ny = len ? y / len : 0;
+    if (thumb.current) thumb.current.style.transform = `translate(${nx * held}px, ${ny * held}px)`;
+    const mag = held / reach;
+    // Past the dead zone, grow slowly at first for fine moves near a room.
+    const power = mag < DEADZONE ? 0 : ((mag - DEADZONE) / (1 - DEADZONE)) ** 1.5;
+    onChange(nx * power, ny * power);
+  };
+
+  const release = (e) => {
+    if (e.pointerId !== active.current) return;
+    active.current = null;
+    if (thumb.current) thumb.current.style.transform = "translate(0, 0)";
+    onChange(0, 0);
+  };
+
+  return (
+    <div
+      role="application"
+      aria-label="Joystick: maju, mundur, kiri, kanan"
+      onPointerDown={(e) => {
+        if (active.current !== null) return;
+        active.current = e.pointerId;
+        e.currentTarget.setPointerCapture(e.pointerId);
+        update(e);
+      }}
+      onPointerMove={(e) => { if (e.pointerId === active.current) update(e); }}
+      onPointerUp={release}
+      onPointerCancel={release}
+      onLostPointerCapture={release}
+      onContextMenu={(e) => e.preventDefault()}
+      style={{
+        ...noSelect,
+        position: "relative", width: `${STICK_SIZE}px`, height: `${STICK_SIZE}px`, flexShrink: 0,
+        borderRadius: "50%", background: C.cyanDim, border: `1px solid ${C.cyan}`,
+        display: "flex", alignItems: "center", justifyContent: "center",
+      }}
+    >
+      <div ref={thumb} style={{
+        width: `${THUMB_SIZE}px`, height: `${THUMB_SIZE}px`, borderRadius: "50%",
+        background: C.cyan, boxShadow: C.cyanGlow, pointerEvents: "none",
+      }} />
+    </div>
+  );
+}
+
+function LiftButton({ label, symbol, onHold }) {
+  const release = () => onHold(false);
+  return (
+    <button
+      aria-label={label}
+      onPointerDown={(e) => { e.currentTarget.setPointerCapture(e.pointerId); onHold(true); }}
+      onPointerUp={release}
+      onPointerCancel={release}
+      onLostPointerCapture={release}
+      onContextMenu={(e) => e.preventDefault()}
+      style={{
+        ...noSelect,
+        flex: 1, width: "48px", borderRadius: "10px", background: C.cyanDim,
+        border: `1px solid ${C.cyan}`, color: "#ffffff", fontSize: "20px", cursor: "pointer",
+      }}
+    >
+      {symbol}
+    </button>
+  );
+}
+
+function LookPad({ send }) {
   const ptrs    = useRef(new Map()); // pointerId → {x, y}
   const pending = useRef(null);      // accumulated transform waiting for rAF flush
   const rafId   = useRef(null);
+
+  useEffect(() => () => cancelAnimationFrame(rafId.current), []);
 
   const vals    = () => [...ptrs.current.values()];
   const getMid  = () => ({ x: (vals()[0].x + vals()[1].x) / 2, y: (vals()[0].y + vals()[1].y) / 2 });
   const getDist = () => { const [a, b] = vals(); return Math.hypot(b.x - a.x, b.y - a.y); };
 
-  const scheduleTransform = ({ panDx = 0, panDy = 0, rotateDx = 0, rotateDy = 0, zoom = 1 }) => {
-    if (!pending.current) pending.current = { panDx: 0, panDy: 0, rotateDx: 0, rotateDy: 0, zoom: 1 };
-    pending.current.panDx    += panDx;
-    pending.current.panDy    += panDy;
+  const schedule = ({ rotateDx = 0, rotateDy = 0, zoom = 1 }) => {
+    if (!pending.current) pending.current = { rotateDx: 0, rotateDy: 0, zoom: 1 };
     pending.current.rotateDx += rotateDx;
     pending.current.rotateDy += rotateDy;
     pending.current.zoom     *= zoom;
@@ -34,11 +122,6 @@ function CameraControls({ send }) {
     }
   };
 
-  const onPointerDown = (e) => {
-    e.currentTarget.setPointerCapture(e.pointerId);
-    ptrs.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
-  };
-
   const onPointerMove = (e) => {
     if (!ptrs.current.has(e.pointerId)) return;
     const count = ptrs.current.size;
@@ -48,26 +131,77 @@ function CameraControls({ send }) {
       const dx = e.clientX - prev.x;
       const dy = e.clientY - prev.y;
       ptrs.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
-      if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) {
-        if (GESTURES === "map") scheduleTransform({ panDx: dx, panDy: dy });
-        else send("cameraRotate", { dx, dy });
-      }
+      if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) schedule({ rotateDx: dx, rotateDy: dy });
     } else if (count === 2) {
       const oldMid  = getMid();
       const oldDist = getDist();
       ptrs.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
       const newMid  = getMid();
       const newDist = getDist();
-
-      const dx   = newMid.x - oldMid.x;
-      const dy   = newMid.y - oldMid.y;
-      const zoom = oldDist > 1 ? oldDist / newDist : 1;
-      if (GESTURES === "map") scheduleTransform({ rotateDx: dx, rotateDy: dy, zoom });
-      else scheduleTransform({ panDx: dx, panDy: dy, zoom });
+      schedule({
+        rotateDx: newMid.x - oldMid.x,
+        rotateDy: newMid.y - oldMid.y,
+        zoom: oldDist > 1 && newDist > 1 ? oldDist / newDist : 1,
+      });
     }
   };
 
   const onPointerUp = (e) => { ptrs.current.delete(e.pointerId); };
+
+  return (
+    <div
+      onPointerDown={(e) => {
+        e.currentTarget.setPointerCapture(e.pointerId);
+        ptrs.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      }}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      onPointerCancel={onPointerUp}
+      style={{
+        ...noSelect,
+        flex: 1, minWidth: 0, height: `${STICK_SIZE}px`, background: C.cyanDim,
+        border: `1px solid ${C.cyan}`, borderRadius: "10px", cursor: "grab", padding: "8px",
+        display: "flex", alignItems: "center", justifyContent: "center", textAlign: "center",
+      }}
+    >
+      <span style={{ color: "#ffffff", fontSize: "13px", lineHeight: 1.4, pointerEvents: "none" }}>
+        Geser: putar<br />Cubit: zoom
+      </span>
+    </div>
+  );
+}
+
+function CameraControls({ send }) {
+  const stick = useRef({ x: 0, y: 0 });
+  const lift  = useRef({ up: false, down: false });
+  const loop  = useRef(null);
+  const last  = useRef(0);
+
+  useEffect(() => () => { cancelAnimationFrame(loop.current); loop.current = null; }, []);
+
+  // While the joystick or a lift button is held, moves the camera every frame,
+  // so holding keeps moving, as in a game.
+  const tick = (now) => {
+    const dt = Math.min((now - last.current) / 1000, 0.1);
+    last.current = now;
+    const { x, y } = stick.current;
+    const rise = (lift.current.up ? 1 : 0) - (lift.current.down ? 1 : 0);
+    if (!x && !y && !rise) { loop.current = null; return; }
+    send("cameraTransform", {
+      // The camera goes where the stick points; panBy takes finger drags, which
+      // move the model the opposite way.
+      walkDx: -x * WALK_PX_PER_S * dt,
+      walkDy: -y * WALK_PX_PER_S * dt,
+      lift: rise * LIFT_PX_PER_S * dt,
+    });
+    loop.current = requestAnimationFrame(tick);
+  };
+
+  const startLoop = () => {
+    if (loop.current) return;
+    last.current = performance.now();
+    loop.current = requestAnimationFrame(tick);
+  };
 
   return (
     <div style={{
@@ -79,32 +213,17 @@ function CameraControls({ send }) {
       gap: "10px",
       flexShrink: 0,
     }}>
-      <p style={{ fontSize: "9px", letterSpacing: "2px", color: C.cyan, margin: 0, textTransform: "uppercase", textShadow: `0 0 8px ${C.cyan}` }}>
+      <p style={{ fontSize: "12px", letterSpacing: "1.5px", color: C.cyan, margin: 0, textTransform: "uppercase", textShadow: `0 0 8px ${C.cyan}` }}>
         Kontrol Kamera
       </p>
 
-      {/* Touch pad: gestures follow GESTURES, chosen on the kiosk */}
-      <div
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={onPointerUp}
-        onPointerCancel={onPointerUp}
-        style={{
-          height: "180px",
-          background: C.cyanDim,
-          border: `1px solid ${C.cyan}`,
-          borderRadius: "10px",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          touchAction: "none",
-          userSelect: "none",
-          cursor: "grab",
-        }}
-      >
-        <span style={{ color: "#ffffff", fontSize: "11px", letterSpacing: "1.5px", pointerEvents: "none", textTransform: "uppercase" }}>
-          {GESTURES === "map" ? "1 finger: pan  ·  2 fingers: rotate / pinch" : "1 finger: rotate  ·  2 fingers: pan / pinch"}
-        </span>
+      <div style={{ display: "flex", alignItems: "stretch", gap: "10px" }}>
+        <Joystick onChange={(x, y) => { stick.current = { x, y }; if (x || y) startLoop(); }} />
+        <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+          <LiftButton label="Terbang naik" symbol="▲" onHold={(on) => { lift.current.up = on; if (on) startLoop(); }} />
+          <LiftButton label="Terbang turun" symbol="▼" onHold={(on) => { lift.current.down = on; if (on) startLoop(); }} />
+        </div>
+        <LookPad send={send} />
       </div>
 
       {/* Reset row */}
@@ -116,14 +235,13 @@ function CameraControls({ send }) {
           background: "transparent",
           border: `1px solid ${C.border}`,
           borderRadius: "8px",
-          color: C.sub,
-          fontSize: "10px",
-          letterSpacing: "1.5px",
+          color: C.text,
+          fontSize: "13px",
+          letterSpacing: "1px",
           cursor: "pointer",
           fontFamily: "'DM Mono', monospace",
-          textTransform: "uppercase",
         }}
-      >Reset View</button>
+      >Reset tampilan</button>
     </div>
   );
 }

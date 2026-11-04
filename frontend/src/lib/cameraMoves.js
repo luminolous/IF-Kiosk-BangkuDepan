@@ -56,3 +56,15 @@ export function panBy(camera, controls, dx, dy, { ground = false } = {}) {
   camera.position.add(offset);
   controls.target.add(offset);
 }
+
+// How high the view may fly. The models stand on y = 0.
+const LIFT_MIN = 0;
+const LIFT_MAX = 60;
+
+/** Flies the camera and its target straight up (px > 0) or down, within limits. */
+export function liftBy(camera, controls, px) {
+  const speed = camera.position.distanceTo(controls.target) * 0.002;
+  const y = Math.max(LIFT_MIN, Math.min(LIFT_MAX, controls.target.y + px * speed));
+  camera.position.y += y - controls.target.y;
+  controls.target.y = y;
+}

@@ -160,6 +160,7 @@ export default function MobileControl() {
         setTvView(msg.view);
         setTvFloor(msg.activeFloor);
         setTvRooms(msg.rooms || []);
+        setSelectedRoom(msg.activeRoom ?? null);
         if (msg.view === "rooms") setAwaitingRooms(false);
       }
     };
@@ -192,6 +193,8 @@ export default function MobileControl() {
       wsRef.current.send(JSON.stringify({ type: "cmd", action, payload }));
     }
   };
+
+  const clearRoom = () => { setSelectedRoom(null); send("selectRoom", null); };
 
   const btnStyle = (active, accent) => ({
     width: "100%",
@@ -403,7 +406,7 @@ export default function MobileControl() {
                 fontFamily: "'DM Mono', monospace", width: "100%",
                 display: "flex", alignItems: "center", gap: "4px",
               }}>
-                <ArrowLeft size={22} strokeWidth={2.5} /> Kembali
+                <ArrowLeft size={22} strokeWidth={2.5} /> Pilih lantai lain
               </button>
             )}
 
@@ -433,9 +436,18 @@ export default function MobileControl() {
             {tvView === "rooms" && rooms.length === 0 && (
               <p style={{ fontSize: "12px", color: C.muted, letterSpacing: "0.5px" }}>Tidak ada ruangan terdeteksi.</p>
             )}
+            {tvView === "rooms" && rooms.length > 0 && (
+              <button onClick={clearRoom} style={btnStyle(!selectedRoom, "cyan")}>
+                Semua ruangan
+              </button>
+            )}
             {tvView === "rooms" && rooms.map((name) => (
               <button key={name} ref={selectedRoom === name ? activeRoomRef : null}
-                onClick={() => { setSelectedRoom(name); send("selectRoom", name); }}
+                onClick={() => {
+                  if (selectedRoom === name) { clearRoom(); return; }
+                  setSelectedRoom(name);
+                  send("selectRoom", name);
+                }}
                 style={btnStyle(selectedRoom === name, "cyan")}>
                 {displayName(name)}
               </button>

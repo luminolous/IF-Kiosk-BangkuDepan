@@ -81,6 +81,13 @@ export default function Kiosk() {
     setActiveFloor, setActiveRoom, setRoomData, setView,
   });
 
+  // Back to the whole floor: no room selected, camera at the floor's own view.
+  const clearRoom = () => {
+    setActiveRoom(null);
+    highlightRoom(null);
+    sceneRef.current.controls?.reset();
+  };
+
   // ── WebSocket command handler ─────────────────────────────────────
   const handleCmdRef = useRef(null);
   handleCmdRef.current = (action, payload) => {
@@ -88,7 +95,7 @@ export default function Kiosk() {
       setActiveFloor(payload);
       animateFloorTransition(payload, () => loadFloorObjMtl(payload));
     }
-    if (action === "selectRoom") { setActiveRoom(payload); highlightRoom(payload); }
+    if (action === "selectRoom") { if (payload) { setActiveRoom(payload); highlightRoom(payload); } else clearRoom(); }
     if (action === "selectFloorAndRoom") {
       const { floor, room } = payload;
       pendingRoomRef.current = room;
@@ -219,10 +226,10 @@ export default function Kiosk() {
 
   sendStateRef.current = () => {
     const rooms = groupMeshNames(modelInfo?.meshNames?.filter(n => !EXCLUDE.test(n)).sort(getRoomSort(activeFloor)) || []);
-    sendState({ view, activeFloor, rooms });
+    sendState({ view, activeFloor, activeRoom, rooms });
   };
 
-  useEffect(() => { sendStateRef.current(); }, [view, activeFloor, modelInfo]);
+  useEffect(() => { sendStateRef.current(); }, [view, activeFloor, activeRoom, modelInfo]);
 
   // ── Room data (flags + occupants + schedules) from the static data ──
   useEffect(() => {
@@ -271,7 +278,7 @@ export default function Kiosk() {
         onFloorSelect={(f) => { setActiveFloor(f); animateFloorTransition(f, () => loadFloorObjMtl(f)); }}
         onBack={() => { lastActiveFloorRef.current = activeFloor; setActiveFloor(null); setView("floors"); loadTC(); }}
         onRoomSelect={(name) => { setActiveRoom(name); highlightRoom(name); }}
-        onRoomClear={() => { setActiveRoom(null); highlightRoom(null); }}
+        onRoomClear={clearRoom}
         footer={<QRPanel mobileUrl={mobileUrl} phoneConnected={phoneConnected} />}
       />
 
@@ -315,7 +322,7 @@ export default function Kiosk() {
         <div style={{ position: "relative", width: "300px", minWidth: "300px", height: "100%", flexShrink: 0 }}>
           {activeRoom && (
             <button
-              onClick={() => { setActiveRoom(null); highlightRoom(null); }}
+              onClick={clearRoom}
               aria-label="Tutup informasi ruangan"
               style={{ position: "absolute", top: "8px", right: "8px", zIndex: 1, width: "48px", height: "48px", borderRadius: "8px", border: `1px solid ${C.border}`, background: C.card, color: C.text, fontSize: "24px", cursor: "pointer" }}
             >

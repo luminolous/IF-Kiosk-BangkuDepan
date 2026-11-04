@@ -4,6 +4,7 @@ import { C, DAYS, MENU_FLOORS, EXCLUDE, displayName } from "../lib/constants";
 import { GESTURES, RELAY_URL } from "../lib/config";
 import { loadData } from "../lib/data";
 import { search } from "../lib/directory";
+import { HelpButton } from "../components/HelpButton";
 
 const JS_DAY_TO_ID = ["", ...DAYS, ""];
 const TODAY = JS_DAY_TO_ID[new Date().getDay()] || null;
@@ -251,6 +252,7 @@ export default function MobileControl() {
             <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: C.green, boxShadow: C.greenGlow, flexShrink: 0 }} />
             <span style={{ fontSize: "10px", color: C.green, letterSpacing: "1px" }}>Terhubung</span>
           </div>
+          <HelpButton variant="phone" />
           <button onClick={disconnect} style={{
             background: "transparent",
             border: "1px solid rgba(255,60,80,0.35)",

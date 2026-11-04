@@ -14,6 +14,7 @@ import { SchedulePanel }  from "../components/SchedulePanel";
 import { useTVWebSocket } from "../hooks/useWebSocket";
 import { QRPanel }        from "../components/QRPanel";
 import { NowBoard }       from "../components/NowBoard";
+import { HelpButton }     from "../components/HelpButton";
 
 // How often the kiosk checks whether a new data version has been deployed.
 const DATA_CHECK_MS = 10 * 60 * 1000;
@@ -277,6 +278,8 @@ export default function Kiosk() {
       {/* 3D viewport */}
       <div style={{ flex: 1, minWidth: 0, position: "relative", overflow: "hidden" }}>
         <div ref={mountRef} style={{ width: "100%", height: "100%" }} />
+
+        <HelpButton variant="kiosk" style={{ position: "absolute", top: "16px", right: "16px", zIndex: 5 }} />
 
         {activeFloor && status === "success" && (
           <div style={{ position: "absolute", top: "16px", left: "16px", background: "rgba(8,9,15,0.85)", border: `1px solid ${C.cyan}`, boxShadow: C.cyanGlow, borderRadius: "6px", padding: "8px 16px", fontSize: "18px", color: C.cyan, letterSpacing: "1px", backdropFilter: "blur(6px)" }}>

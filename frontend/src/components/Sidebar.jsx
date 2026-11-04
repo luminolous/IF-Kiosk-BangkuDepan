@@ -52,6 +52,7 @@ export function Sidebar({
   onFloorSelect,
   onBack,
   onRoomSelect,
+  onRoomClear,
   footer,
 }) {
   const activeRoomRef = useRef(null);
@@ -92,18 +93,19 @@ export function Sidebar({
       {view === "rooms" && (
         <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
           <button onClick={onBack} style={{ background: "transparent", border: `1px solid ${C.border}`, borderRadius: "6px", padding: "7px 12px", color: C.sub, fontSize: "12px", cursor: "pointer", textAlign: "left", transition: "all 0.2s", letterSpacing: "0.5px" }}>
-            ← Kembali
+            ← Pilih lantai lain
           </button>
           <div>
             {sidebarLabel(activeFloor || "Ruangan")}
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+            <FloorBtn label="Semua ruangan" active={!activeRoom} onClick={onRoomClear} />
             {modelInfo?.meshNames?.length > 0 ? (
               groupMeshNames(modelInfo.meshNames.filter((name) => !EXCLUDE.test(name)).sort(getRoomSort(activeFloor)))
                 .map((name) => (
                   <RoomBtn key={name} ref={activeRoom === name ? activeRoomRef : null}
                     label={name} active={activeRoom === name}
-                    onClick={() => onRoomSelect(name)} />
+                    onClick={() => (activeRoom === name ? onRoomClear() : onRoomSelect(name))} />
                 ))
             ) : (
               <p style={{ fontSize: "11px", color: C.muted, lineHeight: "1.6" }}>Tidak ada mesh ditemukan.</p>

@@ -270,6 +270,7 @@ export default function Kiosk() {
         onFloorSelect={(f) => { setActiveFloor(f); animateFloorTransition(f, () => loadFloorObjMtl(f)); }}
         onBack={() => { lastActiveFloorRef.current = activeFloor; setActiveFloor(null); setView("floors"); loadTC(); }}
         onRoomSelect={(name) => { setActiveRoom(name); highlightRoom(name); }}
+        onRoomClear={() => { setActiveRoom(null); highlightRoom(null); }}
         footer={<QRPanel mobileUrl={mobileUrl} phoneConnected={phoneConnected} />}
       />
 
@@ -305,10 +306,19 @@ export default function Kiosk() {
         )}
       </div>
 
-      {/* The panel belongs to the paired phone. With no relay nobody can pair,
-          so show it whenever a room is tapped on the screen itself. */}
-      {(phoneConnected || !RELAY_URL) && (
-        <div style={{ width: "300px", minWidth: "300px", height: "100%", flexShrink: 0 }}>
+      {/* Shown for a paired phone, or whenever a room is chosen on the kiosk
+          screen itself, so a visitor without a phone still gets the info. */}
+      {(phoneConnected || !RELAY_URL || activeRoom) && (
+        <div style={{ position: "relative", width: "300px", minWidth: "300px", height: "100%", flexShrink: 0 }}>
+          {activeRoom && (
+            <button
+              onClick={() => { setActiveRoom(null); highlightRoom(null); }}
+              aria-label="Tutup informasi ruangan"
+              style={{ position: "absolute", top: "8px", right: "8px", zIndex: 1, width: "48px", height: "48px", borderRadius: "8px", border: `1px solid ${C.border}`, background: C.card, color: C.text, fontSize: "24px", cursor: "pointer" }}
+            >
+              ×
+            </button>
+          )}
           <SchedulePanel
             roomName={activeRoom}
             roomData={roomData}

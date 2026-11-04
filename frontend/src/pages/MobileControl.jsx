@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, Search, X, LoaderCircle, CheckCircle, ChevronRight } from "lucide-react";
+import { ArrowLeft, Search, X, LoaderCircle, CheckCircle, ChevronDown, ChevronLeft, ChevronRight, ChevronUp } from "lucide-react";
 import { C, DAYS, MENU_FLOORS, EXCLUDE, displayName } from "../lib/constants";
 import { RELAY_URL } from "../lib/config";
 import { loadData } from "../lib/data";
@@ -18,6 +18,63 @@ const THUMB_SIZE    = 56;
 const DEADZONE      = 0.12;
 
 const noSelect = { touchAction: "none", userSelect: "none", WebkitUserSelect: "none", WebkitTouchCallout: "none" };
+
+/** Whether to lay the controls out for a phone held sideways. */
+function useLandscape() {
+  const read = () => window.innerWidth > window.innerHeight;
+  const [landscape, setLandscape] = useState(read);
+  useEffect(() => {
+    // The on-screen keyboard shrinks the page; that is not a turned phone.
+    const onChange = () => { if (document.activeElement?.tagName !== "INPUT") setLandscape(read()); };
+    window.addEventListener("resize", onChange);
+    window.addEventListener("orientationchange", onChange);
+    window.addEventListener("focusout", onChange);
+    return () => {
+      window.removeEventListener("resize", onChange);
+      window.removeEventListener("orientationchange", onChange);
+      window.removeEventListener("focusout", onChange);
+    };
+  }, []);
+  return landscape;
+}
+
+/** Moves the camera every frame while the joystick or a lift button is held. */
+function useDroneLoop(send) {
+  const stick = useRef({ x: 0, y: 0 });
+  const lift  = useRef({ up: false, down: false });
+  const loop  = useRef(null);
+  const last  = useRef(0);
+
+  useEffect(() => () => { cancelAnimationFrame(loop.current); loop.current = null; }, []);
+
+  const tick = (now) => {
+    const dt = Math.min((now - last.current) / 1000, 0.1);
+    last.current = now;
+    const { x, y } = stick.current;
+    const rise = (lift.current.up ? 1 : 0) - (lift.current.down ? 1 : 0);
+    if (!x && !y && !rise) { loop.current = null; return; }
+    send("cameraTransform", {
+      // The camera goes where the stick points; walkBy takes finger drags, which
+      // move the model the opposite way.
+      walkDx: -x * WALK_PX_PER_S * dt,
+      walkDy: -y * WALK_PX_PER_S * dt,
+      lift: rise * LIFT_PX_PER_S * dt,
+    });
+    loop.current = requestAnimationFrame(tick);
+  };
+
+  const start = () => {
+    if (loop.current) return;
+    last.current = performance.now();
+    loop.current = requestAnimationFrame(tick);
+  };
+
+  return {
+    setStick: (x, y) => { stick.current = { x, y }; if (x || y) start(); },
+    setUp:    (on) => { lift.current.up = on; if (on) start(); },
+    setDown:  (on) => { lift.current.down = on; if (on) start(); },
+  };
+}
 
 function Joystick({ onChange }) {
   const thumb = useRef(null);
@@ -46,6 +103,8 @@ function Joystick({ onChange }) {
     onChange(0, 0);
   };
 
+  const arrow = { position: "absolute", color: "#ffffff", opacity: 0.55, pointerEvents: "none" };
+
   return (
     <div
       role="application"
@@ -68,6 +127,10 @@ function Joystick({ onChange }) {
         display: "flex", alignItems: "center", justifyContent: "center",
       }}
     >
+      <ChevronUp    size={16} style={{ ...arrow, top: "3px" }} />
+      <ChevronDown  size={16} style={{ ...arrow, bottom: "3px" }} />
+      <ChevronLeft  size={16} style={{ ...arrow, left: "3px" }} />
+      <ChevronRight size={16} style={{ ...arrow, right: "3px" }} />
       <div ref={thumb} style={{
         width: `${THUMB_SIZE}px`, height: `${THUMB_SIZE}px`, borderRadius: "50%",
         background: C.cyan, boxShadow: C.cyanGlow, pointerEvents: "none",
@@ -88,7 +151,7 @@ function LiftButton({ label, symbol, onHold }) {
       onContextMenu={(e) => e.preventDefault()}
       style={{
         ...noSelect,
-        flex: 1, width: "48px", borderRadius: "10px", background: C.cyanDim,
+        flex: 1, width: "52px", minHeight: "48px", borderRadius: "10px", background: C.cyanDim,
         border: `1px solid ${C.cyan}`, color: "#ffffff", fontSize: "20px", cursor: "pointer",
       }}
     >
@@ -108,11 +171,11 @@ function LookPad({ send }) {
   const getMid  = () => ({ x: (vals()[0].x + vals()[1].x) / 2, y: (vals()[0].y + vals()[1].y) / 2 });
   const getDist = () => { const [a, b] = vals(); return Math.hypot(b.x - a.x, b.y - a.y); };
 
-  const schedule = ({ rotateDx = 0, rotateDy = 0, zoom = 1 }) => {
-    if (!pending.current) pending.current = { rotateDx: 0, rotateDy: 0, zoom: 1 };
-    pending.current.rotateDx += rotateDx;
-    pending.current.rotateDy += rotateDy;
-    pending.current.zoom     *= zoom;
+  const schedule = ({ lookDx = 0, lookDy = 0, zoom = 1 }) => {
+    if (!pending.current) pending.current = { lookDx: 0, lookDy: 0, zoom: 1 };
+    pending.current.lookDx += lookDx;
+    pending.current.lookDy += lookDy;
+    pending.current.zoom   *= zoom;
     if (!rafId.current) {
       rafId.current = requestAnimationFrame(() => {
         send("cameraTransform", pending.current);
@@ -131,18 +194,12 @@ function LookPad({ send }) {
       const dx = e.clientX - prev.x;
       const dy = e.clientY - prev.y;
       ptrs.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
-      if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) schedule({ rotateDx: dx, rotateDy: dy });
+      if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) schedule({ lookDx: dx, lookDy: dy });
     } else if (count === 2) {
-      const oldMid  = getMid();
       const oldDist = getDist();
       ptrs.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
-      const newMid  = getMid();
       const newDist = getDist();
-      schedule({
-        rotateDx: newMid.x - oldMid.x,
-        rotateDy: newMid.y - oldMid.y,
-        zoom: oldDist > 1 && newDist > 1 ? oldDist / newDist : 1,
-      });
+      schedule({ zoom: oldDist > 1 && newDist > 1 ? oldDist / newDist : 1 });
     }
   };
 
@@ -159,90 +216,29 @@ function LookPad({ send }) {
       onPointerCancel={onPointerUp}
       style={{
         ...noSelect,
-        flex: 1, minWidth: 0, height: `${STICK_SIZE}px`, background: C.cyanDim,
+        flex: 1, minWidth: 0, minHeight: `${STICK_SIZE}px`, background: C.cyanDim,
         border: `1px solid ${C.cyan}`, borderRadius: "10px", cursor: "grab", padding: "8px",
         display: "flex", alignItems: "center", justifyContent: "center", textAlign: "center",
       }}
     >
-      <span style={{ color: "#ffffff", fontSize: "13px", lineHeight: 1.4, pointerEvents: "none" }}>
-        Geser: putar<br />Cubit: zoom
+      <span style={{ color: "#ffffff", fontSize: "13px", lineHeight: 1.5, pointerEvents: "none" }}>
+        Geser: lihat sekeliling<br />Cubit: zoom
       </span>
     </div>
   );
 }
 
-function CameraControls({ send }) {
-  const stick = useRef({ x: 0, y: 0 });
-  const lift  = useRef({ up: false, down: false });
-  const loop  = useRef(null);
-  const last  = useRef(0);
-
-  useEffect(() => () => { cancelAnimationFrame(loop.current); loop.current = null; }, []);
-
-  // While the joystick or a lift button is held, moves the camera every frame,
-  // so holding keeps moving, as in a game.
-  const tick = (now) => {
-    const dt = Math.min((now - last.current) / 1000, 0.1);
-    last.current = now;
-    const { x, y } = stick.current;
-    const rise = (lift.current.up ? 1 : 0) - (lift.current.down ? 1 : 0);
-    if (!x && !y && !rise) { loop.current = null; return; }
-    send("cameraTransform", {
-      // The camera goes where the stick points; panBy takes finger drags, which
-      // move the model the opposite way.
-      walkDx: -x * WALK_PX_PER_S * dt,
-      walkDy: -y * WALK_PX_PER_S * dt,
-      lift: rise * LIFT_PX_PER_S * dt,
-    });
-    loop.current = requestAnimationFrame(tick);
-  };
-
-  const startLoop = () => {
-    if (loop.current) return;
-    last.current = performance.now();
-    loop.current = requestAnimationFrame(tick);
-  };
-
+function ResetButton({ send }) {
   return (
-    <div style={{
-      borderTop: `1px solid ${C.border}`,
-      background: C.card,
-      padding: "12px 16px 24px",
-      display: "flex",
-      flexDirection: "column",
-      gap: "10px",
-      flexShrink: 0,
-    }}>
-      <p style={{ fontSize: "12px", letterSpacing: "1.5px", color: C.cyan, margin: 0, textTransform: "uppercase", textShadow: `0 0 8px ${C.cyan}` }}>
-        Kontrol Kamera
-      </p>
-
-      <div style={{ display: "flex", alignItems: "stretch", gap: "10px" }}>
-        <Joystick onChange={(x, y) => { stick.current = { x, y }; if (x || y) startLoop(); }} />
-        <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-          <LiftButton label="Terbang naik" symbol="▲" onHold={(on) => { lift.current.up = on; if (on) startLoop(); }} />
-          <LiftButton label="Terbang turun" symbol="▼" onHold={(on) => { lift.current.down = on; if (on) startLoop(); }} />
-        </div>
-        <LookPad send={send} />
-      </div>
-
-      {/* Reset row */}
-      <button
-        onClick={() => send("cameraReset")}
-        style={{
-          width: "100%",
-          padding: "14px 0",
-          background: "transparent",
-          border: `1px solid ${C.border}`,
-          borderRadius: "8px",
-          color: C.text,
-          fontSize: "13px",
-          letterSpacing: "1px",
-          cursor: "pointer",
-          fontFamily: "'DM Mono', monospace",
-        }}
-      >Reset tampilan</button>
-    </div>
+    <button
+      onClick={() => send("cameraReset")}
+      style={{
+        width: "100%", minHeight: "44px", background: "transparent",
+        border: `1px solid ${C.border}`, borderRadius: "8px", color: C.text,
+        fontSize: "13px", letterSpacing: "0.5px", cursor: "pointer",
+        fontFamily: "'DM Mono', monospace", flexShrink: 0,
+      }}
+    >Reset tampilan</button>
   );
 }
 
@@ -262,6 +258,7 @@ export default function MobileControl() {
   const [searchLoading, setSearchLoading] = useState(false);
   const [selectedRoom,  setSelectedRoom]  = useState(null);
   const [awaitingRooms, setAwaitingRooms] = useState(false);
+  const landscape = useLandscape();
 
   const disconnect = () => wsRef.current?.close();
 
@@ -312,11 +309,13 @@ export default function MobileControl() {
     }
   };
 
+  const drone = useDroneLoop(send);
+
   const clearRoom = () => { setSelectedRoom(null); send("selectRoom", null); };
 
   const btnStyle = (active, accent) => ({
     width: "100%",
-    padding: "16px 20px",
+    padding: landscape ? "10px 14px" : "16px 20px",
     borderRadius: "10px",
     fontSize: "15px",
     cursor: "pointer",
@@ -360,37 +359,42 @@ export default function MobileControl() {
     <div style={{ height: "100dvh", background: C.bg, fontFamily: "'DM Mono', monospace", display: "flex", flexDirection: "column", overflow: "hidden" }}>
 
       {/* Header */}
-      <div style={{ padding: "14px 20px", borderBottom: `1px solid ${C.border}`, borderTop: `2px solid ${C.cyan}`, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <div>
-          <p style={{ fontSize: "8px", letterSpacing: "3px", color: "#ffffff", textTransform: "uppercase", margin: "0 0 2px" }}>Teknik Informatika</p>
-          <p style={{ fontSize: "18px", fontWeight: "700", margin: 0, letterSpacing: "2px", textShadow: `0 0 16px ${C.cyan}` }}>
-            <span style={{ color: C.cyan }}>IF </span>
-            <span style={{ color: C.cyan }}>Kiosk</span>
-          </p>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+      <div style={{ padding: landscape ? "4px 12px" : "8px 16px", borderBottom: `1px solid ${C.border}`, borderTop: `2px solid ${C.cyan}`, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px" }}>
+        <p style={{ fontSize: "18px", fontWeight: "700", margin: 0, letterSpacing: "1px", whiteSpace: "nowrap", color: C.cyan, textShadow: `0 0 16px ${C.cyan}` }}>
+          IF Kiosk
+        </p>
+        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-            <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: C.green, boxShadow: C.greenGlow, flexShrink: 0 }} />
-            <span style={{ fontSize: "10px", color: C.green, letterSpacing: "1px" }}>Terhubung</span>
+            <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: C.green, boxShadow: C.greenGlow, flexShrink: 0 }} />
+            <span style={{ fontSize: "12px", color: C.green }}>Terhubung</span>
           </div>
           <HelpButton variant="phone" />
           <button onClick={disconnect} style={{
             background: "transparent",
-            border: "1px solid rgba(255,60,80,0.35)",
-            borderRadius: "6px",
-            padding: "5px 10px",
-            color: "rgba(255,100,120,0.8)",
-            fontSize: "10px",
-            letterSpacing: "1px",
+            border: "1px solid rgba(255,60,80,0.5)",
+            borderRadius: "8px",
+            minHeight: "44px",
+            padding: "0 12px",
+            color: "#ff8092",
+            fontSize: "13px",
             cursor: "pointer",
             fontFamily: "'DM Mono', monospace",
-            textTransform: "uppercase",
           }}>
             Selesai
           </button>
         </div>
       </div>
 
+      <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: landscape ? "row" : "column" }}>
+
+      {/* Sideways: the joystick under the left thumb */}
+      {landscape && (
+        <div style={{ flexShrink: 0, padding: "12px", display: "flex", alignItems: "flex-end", borderRight: `1px solid ${C.border}`, background: C.card }}>
+          <Joystick onChange={drone.setStick} />
+        </div>
+      )}
+
+      <div style={{ flex: 1, minWidth: 0, minHeight: 0, display: "flex", flexDirection: "column" }}>
       {/* Search bar */}
       <div style={{ padding: "10px 16px 0", flexShrink: 0 }}>
         <div style={{ position: "relative" }}>
@@ -398,12 +402,12 @@ export default function MobileControl() {
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Cari ruangan, mata kuliah, dosen..."
+            placeholder="Cari ruangan atau dosen"
             style={{
               width: "100%", boxSizing: "border-box",
               background: C.card, border: `1px solid ${query ? C.cyan : C.border}`,
               borderRadius: "8px", padding: "11px 36px 11px 46px",
-              color: C.text, fontSize: "13px", fontFamily: "'DM Mono', monospace",
+              color: C.text, fontSize: "16px", fontFamily: "'DM Mono', monospace",
               letterSpacing: "0.3px", outline: "none",
               boxShadow: query ? C.cyanGlow : "none",
               transition: "border-color 0.15s, box-shadow 0.15s",
@@ -524,7 +528,7 @@ export default function MobileControl() {
                 fontFamily: "'DM Mono', monospace", width: "100%",
                 display: "flex", alignItems: "center", gap: "4px",
               }}>
-                <ArrowLeft size={22} strokeWidth={2.5} /> Pilih lantai lain
+                <ArrowLeft size={20} strokeWidth={2.5} /> Pilih lantai lain
               </button>
             )}
 
@@ -532,8 +536,8 @@ export default function MobileControl() {
               <p style={{ fontSize: "10px", letterSpacing: "2px", color: C.cyan, margin: "0 0 4px", textTransform: "uppercase", textShadow: `0 0 8px ${C.cyan}` }}>
                 {tvView === "floors" ? "Pilih Lantai" : (tvFloor || "Ruangan")}
               </p>
-{tvView === "rooms" && (
-                <p style={{ fontSize: "11px", color: C.sub, letterSpacing: "0.3px", margin: "4px 0 0", fontStyle: "italic" }}>
+{tvView === "rooms" && !landscape && (
+                <p style={{ fontSize: "12px", color: C.sub, letterSpacing: "0.3px", margin: "4px 0 0", fontStyle: "italic" }}>
                   Pilih salah satu ruangan untuk menyorotnya di layar utama
                 </p>
               )}
@@ -574,8 +578,34 @@ export default function MobileControl() {
         )}
       </div>
 
-      {/* Camera controls — always visible at bottom */}
-      <CameraControls send={send} />
+      </div>
+
+      {/* Camera controls: the right column sideways, the bottom row upright */}
+      {landscape ? (
+        <div style={{ width: "clamp(190px, 30vw, 250px)", flexShrink: 0, padding: "12px", display: "flex", flexDirection: "column", gap: "8px", borderLeft: `1px solid ${C.border}`, background: C.card }}>
+          <div style={{ flex: 1, minHeight: 0, display: "flex", gap: "8px" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+              <LiftButton label="Terbang naik" symbol="▲" onHold={drone.setUp} />
+              <LiftButton label="Terbang turun" symbol="▼" onHold={drone.setDown} />
+            </div>
+            <LookPad send={send} />
+          </div>
+          <ResetButton send={send} />
+        </div>
+      ) : (
+        <div style={{ flexShrink: 0, padding: "12px 16px 16px", display: "flex", flexDirection: "column", gap: "10px", borderTop: `1px solid ${C.border}`, background: C.card }}>
+          <div style={{ display: "flex", alignItems: "stretch", gap: "10px" }}>
+            <Joystick onChange={drone.setStick} />
+            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+              <LiftButton label="Terbang naik" symbol="▲" onHold={drone.setUp} />
+              <LiftButton label="Terbang turun" symbol="▼" onHold={drone.setDown} />
+            </div>
+            <LookPad send={send} />
+          </div>
+          <ResetButton send={send} />
+        </div>
+      )}
+      </div>
     </div>
   );
 }

@@ -5,7 +5,7 @@ import { C, EXCLUDE, getRoomSort, groupMeshNames } from "../lib/constants";
 import { loadData }     from "../lib/data";
 import { getClassesNow, getRoom } from "../lib/directory";
 import { GESTURES, RELAY_URL, kioskNow } from "../lib/config";
-import { liftBy, panBy, rotateBy, zoomBy } from "../lib/cameraMoves";
+import { liftBy, lookBy, panBy, rotateBy, walkBy, zoomBy } from "../lib/cameraMoves";
 import { useThreeScene }  from "../hooks/useThreeScene";
 import { useAnimations }  from "../hooks/useAnimations";
 import { useModelLoader } from "../hooks/useModelLoader";
@@ -116,13 +116,14 @@ export default function Kiosk() {
     if (action === "cameraPan")    panBy(camera, controls, payload.dx, payload.dy, { ground });
 
     // One frame of the phone's controls, batched: the joystick walks along the
-    // floor, the lift buttons fly up and down, the look pad rotates and zooms.
+    // floor, the lift buttons fly up and down, the look pad turns the view and zooms.
     if (action === "cameraTransform") {
-      const { zoom = 1, panDx = 0, panDy = 0, rotateDx = 0, rotateDy = 0, walkDx = 0, walkDy = 0, lift = 0 } = payload;
+      const { zoom = 1, panDx = 0, panDy = 0, rotateDx = 0, rotateDy = 0, walkDx = 0, walkDy = 0, lift = 0, lookDx = 0, lookDy = 0 } = payload;
       if (zoom !== 1)                     zoomBy(camera, controls, zoom);
       if (panDx !== 0 || panDy !== 0)     panBy(camera, controls, panDx, panDy, { ground });
       if (rotateDx !== 0 || rotateDy !== 0) rotateBy(camera, controls, rotateDx, rotateDy);
-      if (walkDx !== 0 || walkDy !== 0)   panBy(camera, controls, walkDx, walkDy, { ground: true });
+      if (lookDx !== 0 || lookDy !== 0)   lookBy(camera, controls, lookDx, lookDy);
+      if (walkDx !== 0 || walkDy !== 0)   walkBy(camera, controls, walkDx, walkDy);
       if (lift !== 0)                     liftBy(camera, controls, lift);
     }
 

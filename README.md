@@ -56,7 +56,7 @@ The kiosk opens a WebSocket as `role=tv`, receives a session id, and renders a Q
 
 <img src="docs/screenshots/phone.webp" alt="The /mobile page on a phone: search, the room list for the current floor, and a touch pad that rotates, pans and zooms the kiosk's camera" width="260" align="right">
 
-The phone gets search, the room list of whichever floor the kiosk shows, and game-style controls for the kiosk's camera: a joystick walks along the floor, the ▲▼ buttons fly up and down, and a look pad rotates (drag) and zooms (pinch). The room panel on the kiosk (the right-hand column in the screenshot above) appears whenever a room is chosen, from the kiosk screen or a phone.
+The phone gets search, the room list of whichever floor the kiosk shows, and game-style controls for the kiosk's camera: a joystick walks along the floor, the ▲▼ buttons fly up and down, and a look pad turns the view in place (drag) and zooms (pinch). The layout follows the phone, upright or sideways. The room panel on the kiosk (the right-hand column in the screenshot above) appears whenever a room is chosen, from the kiosk screen or a phone.
 
 <br clear="right">
 

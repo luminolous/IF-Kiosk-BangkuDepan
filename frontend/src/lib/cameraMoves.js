@@ -32,8 +32,8 @@ export function zoomBy(camera, controls, scale) {
  * is how a map pans, and how OrbitControls pans with screenSpacePanning off.
  * Without it, the slide is in the plane of the screen.
  */
-export function panBy(camera, controls, dx, dy, { ground = false } = {}) {
-  const speed = camera.position.distanceTo(controls.target) * 0.002;
+export function panBy(camera, controls, dx, dy, { ground = false, minDistance = 0 } = {}) {
+  const speed = Math.max(camera.position.distanceTo(controls.target), minDistance) * 0.002;
   const dir   = camera.getWorldDirection(new THREE.Vector3());
   const right = new THREE.Vector3();
   const ahead = new THREE.Vector3();
@@ -57,14 +57,38 @@ export function panBy(camera, controls, dx, dy, { ground = false } = {}) {
   controls.target.add(offset);
 }
 
-// How high the view may fly. The models stand on y = 0.
-const LIFT_MIN = 0;
-const LIFT_MAX = 60;
+// Inside the model the camera sits close to its target, and moves scaled by
+// that distance would crawl. The drone controls never go slower than this.
+const MIN_TRAVEL_DISTANCE = 15;
+
+/** Moves along the floor, the way the camera faces, for the phone's joystick. */
+export function walkBy(camera, controls, dx, dy) {
+  panBy(camera, controls, dx, dy, { ground: true, minDistance: MIN_TRAVEL_DISTANCE });
+}
+
+// How high the camera may fly. The models stand on y = 0.
+const LIFT_MIN = 0.5;
+const LIFT_MAX = 150;
 
 /** Flies the camera and its target straight up (px > 0) or down, within limits. */
 export function liftBy(camera, controls, px) {
-  const speed = camera.position.distanceTo(controls.target) * 0.002;
-  const y = Math.max(LIFT_MIN, Math.min(LIFT_MAX, controls.target.y + px * speed));
-  camera.position.y += y - controls.target.y;
-  controls.target.y = y;
+  const speed = Math.max(camera.position.distanceTo(controls.target), MIN_TRAVEL_DISTANCE) * 0.002;
+  const y = Math.max(LIFT_MIN, Math.min(LIFT_MAX, camera.position.y + px * speed));
+  controls.target.y += y - camera.position.y;
+  camera.position.y = y;
+}
+
+const LOOK_SPEED = 0.004;
+
+/**
+ * Turns the view while the camera stays where it is, as in a first-person
+ * game: dx looks left and right, dy looks up and down. Only the target moves.
+ */
+export function lookBy(camera, controls, dx, dy) {
+  const view = new THREE.Vector3().subVectors(controls.target, camera.position);
+  const sph = new THREE.Spherical().setFromVector3(view);
+  sph.theta -= dx * LOOK_SPEED;
+  sph.phi    = Math.max(0.05, Math.min(Math.PI - 0.05, sph.phi + dy * LOOK_SPEED));
+  view.setFromSpherical(sph);
+  controls.target.copy(camera.position).add(view);
 }

@@ -19,7 +19,8 @@ const STEPS = {
     "Pilih lantai, lalu ketuk ruangan untuk menampilkannya di layar kiosk.",
     "Ketuk \"Semua ruangan\" untuk kembali melihat seluruh lantai.",
     "Joystick kiri: tahan untuk maju, mundur, kiri, kanan. Tombol ▲▼: terbang naik dan turun.",
-    "Area kanan: geser untuk memutar pandangan, cubit untuk zoom.",
+    "Area kanan: geser untuk melihat sekeliling tanpa berpindah tempat, cubit untuk zoom.",
+    "Miringkan HP untuk tampilan landscape. Ketuk \"Reset tampilan\" kalau tersesat.",
     "Ketuk \"Selesai\" kalau sudah. Sesi juga berhenti sendiri setelah 1 menit tidak aktif.",
   ],
 };

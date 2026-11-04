@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import * as THREE from "three";
 
-import { liftBy, panBy, rotateBy, zoomBy } from "../src/lib/cameraMoves.js";
+import { liftBy, lookBy, panBy, rotateBy, walkBy, zoomBy } from "../src/lib/cameraMoves.js";
 
 // A camera 20 units back from the origin and 20 up, looking at it: tilted
 // 45°, as the kiosk shows a floor.
@@ -76,12 +76,45 @@ test("lifting moves the camera and its target up together, keeping the view", ()
   close(after.z, before.z);
 });
 
-test("lifting stops at the floor and at the ceiling of the flying range", () => {
+test("lifting stops at the floor and at the top of the flying range", () => {
   const { camera, controls } = rig();
-  liftBy(camera, controls, -100);
-  close(controls.target.y, 0);
-  close(camera.position.y, 20);
+  liftBy(camera, controls, -1e6);
+  close(camera.position.y, 0.5);
+  close(controls.target.y, -19.5);
   liftBy(camera, controls, 1e6);
-  close(controls.target.y, 60);
-  close(camera.position.y, 80);
+  close(camera.position.y, 150);
+  close(controls.target.y, 130);
+});
+
+test("looking turns the view but leaves the camera where it is", () => {
+  const { camera, controls } = rig();
+  const distance = camera.position.distanceTo(controls.target);
+  lookBy(camera, controls, 40, 25);
+  close(camera.position.x, 0);
+  close(camera.position.y, 20);
+  close(camera.position.z, 20);
+  close(camera.position.distanceTo(controls.target), distance);
+});
+
+test("dragging right looks right, dragging up looks up", () => {
+  const { camera, controls } = rig();
+  const startY = controls.target.y;
+  lookBy(camera, controls, 40, 0);
+  assert.ok(controls.target.x > 0);
+  lookBy(camera, controls, 0, -40);
+  assert.ok(controls.target.y > startY);
+});
+
+test("looking never tips over straight up or down", () => {
+  const { camera, controls } = rig();
+  lookBy(camera, controls, 0, 1e6);
+  const view = controls.target.clone().sub(camera.position).normalize();
+  assert.ok(view.y > -1 && view.y < 0);
+});
+
+test("walking keeps a usable speed close to the target", () => {
+  const { camera, controls } = rig([0, 1, 1]);
+  const z = camera.position.z;
+  walkBy(camera, controls, 0, 100);
+  close(z - camera.position.z, 15 * 0.002 * 100);
 });

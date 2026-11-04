@@ -1,0 +1,73 @@
+# Builds your group's version of the kiosk and publishes it to GitHub Pages.
+#
+# Every push and pull request: validate data/*.csv, run the tests, build.
+# Pushes to the default branch (master): also publish at
+#   https://<organisation>.github.io/<repository>/
+#
+# Pages is switched on for each group repository by the lecturer. Until then,
+# the "deploy" job fails and the "build" job still tells you whether your code
+# works.
+#
+# Every page of this build carries a "Student prototype" badge, so that nobody
+# in the lobby mistakes your version for the official kiosk. Do not remove it.
+#
+# Phone pairing uses the course relay run by the lecturer. If the QR code never
+# appears on your published site, ask on the forum; the rest of the kiosk works
+# without it.
+
+name: Pages
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Name the prototype
+        id: label
+        run: |
+          repo="${{ github.event.repository.name }}"
+          group="$(echo "$repo" | grep -oE 'group-[0-9]+$' || true)"
+          if [ -n "$group" ]; then
+            echo "text=Student prototype · EA234506 ${group} · not the official kiosk" >> "$GITHUB_OUTPUT"
+          else
+            echo "text=Student prototype · ${repo} · not the official kiosk" >> "$GITHUB_OUTPUT"
+          fi
+      - run: npm run build
+        env:
+          BASE_PATH: /${{ github.event.repository.name }}/
+          VITE_RELAY_URL: ${{ vars.RELAY_URL || 'wss://if-kiosk-relay.labgigaits.workers.dev' }}
+          VITE_PROTOTYPE_LABEL: ${{ steps.label.outputs.text }}
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: frontend/dist
+
+  deploy:
+    if: github.event_name != 'pull_request' && (github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main')
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

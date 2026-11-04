@@ -1,0 +1,15 @@
+{
+  "name": "relay",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Hosted WebSocket relay that pairs the kiosk with a phone: a Cloudflare Worker with one Durable Object per session",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "test": "node scripts/test.js"
+  },
+  "devDependencies": {
+    "wrangler": "^4.152.0"
+  }
+}

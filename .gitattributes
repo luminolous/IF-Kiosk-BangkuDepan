@@ -1,0 +1,16 @@
+# Normalise line endings so Windows and Linux contributors do not produce
+# whole-file diffs. Text is stored as LF in the repository; Git converts on
+# checkout according to each machine's core.autocrlf setting.
+* text=auto eol=lf
+
+# Wavefront models are plain text, so they normalise like any other text file,
+# but a mesh diff is never worth reading: -diff keeps them out of patch output.
+*.obj  text eol=lf -diff
+*.mtl  text eol=lf -diff
+
+# True binaries: never convert, never diff.
+*.png  binary
+*.webp binary
+
+# Generated: collapse in pull-request diffs.
+package-lock.json linguist-generated=true

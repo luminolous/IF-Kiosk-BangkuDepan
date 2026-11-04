@@ -1,0 +1,23 @@
+name: Check submission
+
+# Runs on every push so the group can see whether the submission is complete.
+# It does NOT grade. A green tick means "this will be marked", not "this is good".
+# Before your first visitor, run "python3 tools/check_assignment3.py --plan" yourself.
+
+on:
+  push:
+    branches: [ master, main ]
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install PDF tools
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq poppler-utils
+
+      - name: Check the submission
+        run: python3 tools/check_assignment3.py

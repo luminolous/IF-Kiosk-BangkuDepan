@@ -6,7 +6,7 @@ compatibility_date = "2025-09-01"
 
 [vars]
 # Pages the relay accepts browser connections from, comma-separated.
-ALLOWED_ORIGINS = "https://hadziq.github.io,https://giga-iv.github.io,https://luminolous.github.io/"
+ALLOWED_ORIGINS = "https://hadziq.github.io,https://giga-iv.github.io,https://luminolous.github.io"
 
 [[durable_objects.bindings]]
 name = "SESSIONS"

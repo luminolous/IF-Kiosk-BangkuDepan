@@ -1,25 +1,19 @@
-# Builds your group's version of the kiosk and publishes it to GitHub Pages.
+# Validates data/*.csv, runs the tests and builds the kiosk on every push and
+# pull request. Pushes to master are then published to GitHub Pages at
+# https://<owner>.github.io/<repo>/.
 #
-# Every push and pull request: validate data/*.csv, run the tests, build.
-# Pushes to the default branch (master): also publish at
-#   https://<organisation>.github.io/<repository>/
+# One-time setup: Settings → Pages → Build and deployment → Source: GitHub Actions.
 #
-# Pages is switched on for each group repository by the lecturer. Until then,
-# the "deploy" job fails and the "build" job still tells you whether your code
-# works.
-#
-# Every page of this build carries a "Student prototype" badge, so that nobody
-# in the lobby mistakes your version for the official kiosk. Do not remove it.
-#
-# Phone pairing uses the course relay run by the lecturer. If the QR code never
-# appears on your published site, ask on the forum; the rest of the kiosk works
-# without it.
+# The kiosk pairs with phones through the relay in relay/, deployed by
+# relay.yml. The repository variable RELAY_URL overrides its address
+# (Settings → Secrets and variables → Actions → Variables); set it to "none"
+# to turn phone pairing off.
 
 name: Pages
 
 on:
   push:
-    branches: [master, main]
+    branches: [master]
   pull_request:
   workflow_dispatch:
 
@@ -42,27 +36,22 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - run: npm test
       - name: Name the prototype
         id: label
         run: |
-          repo="${{ github.event.repository.name }}"
-          group="$(echo "$repo" | grep -oE 'group-[0-9]+$' || true)"
-          if [ -n "$group" ]; then
-            echo "text=Student prototype · EA234506 ${group} · not the official kiosk" >> "$GITHUB_OUTPUT"
-          else
-            echo "text=Student prototype · ${repo} · not the official kiosk" >> "$GITHUB_OUTPUT"
-          fi
+          echo "text=Student prototype · ${{ github.event.repository.name }} · not the official kiosk" >> "$GITHUB_OUTPUT"
       - run: npm run build
         env:
           BASE_PATH: /${{ github.event.repository.name }}/
-          VITE_RELAY_URL: ${{ vars.RELAY_URL || 'wss://if-kiosk-relay.labgigaits.workers.dev' }}
           VITE_PROTOTYPE_LABEL: ${{ steps.label.outputs.text }}
+          VITE_RELAY_URL: ${{ vars.RELAY_URL || 'wss://if-kiosk-relay.labgigaits.workers.dev' }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: frontend/dist
 
   deploy:
-    if: github.event_name != 'pull_request' && (github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main')
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/master'
     needs: build
     runs-on: ubuntu-latest
     environment:

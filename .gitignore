@@ -26,6 +26,3 @@ npm-debug.log*
 !.vscode/extensions.json
 .idea
 *.local
-
-# Python
-__pycache__/

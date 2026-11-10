@@ -6,7 +6,7 @@ import { EXCLUDE, UI, getRoomSort, groupMeshNames } from "../lib/constants";
 import { loadData }     from "../lib/data";
 import { getClassesNow, getRoom } from "../lib/directory";
 import { GESTURES, RELAY_URL, kioskNow } from "../lib/config";
-import { liftBy, lookBy, panBy, rotateBy, walkBy, zoomBy } from "../lib/cameraMoves";
+import { flyBy, lookBy, panBy, rotateBy, zoomBy } from "../lib/cameraMoves";
 import { useThreeScene }  from "../hooks/useThreeScene";
 import { useAnimations }  from "../hooks/useAnimations";
 import { useModelLoader } from "../hooks/useModelLoader";
@@ -115,17 +115,15 @@ export default function Kiosk() {
     if (action === "cameraZoom")   zoomBy(camera, controls, payload.scale ?? (payload.direction === "in" ? 0.93 : 1.07));
     if (action === "cameraPan")    panBy(camera, controls, payload.dx, payload.dy, { ground });
 
-    // One frame of the phone's controls, batched: the move joystick walks
-    // along the floor, the look joystick turns the view in place, the lift
-    // buttons raise or lower the camera.
+    // One frame of the phone's controls, batched: the move joystick flies
+    // the way the camera looks, the look joystick turns the view in place.
     if (action === "cameraTransform") {
-      const { zoom = 1, panDx = 0, panDy = 0, rotateDx = 0, rotateDy = 0, walkDx = 0, walkDy = 0, lookDx = 0, lookDy = 0, liftDy = 0 } = payload;
+      const { zoom = 1, panDx = 0, panDy = 0, rotateDx = 0, rotateDy = 0, walkDx = 0, walkDy = 0, lookDx = 0, lookDy = 0 } = payload;
       if (zoom !== 1)                     zoomBy(camera, controls, zoom);
       if (panDx !== 0 || panDy !== 0)     panBy(camera, controls, panDx, panDy, { ground });
       if (rotateDx !== 0 || rotateDy !== 0) rotateBy(camera, controls, rotateDx, rotateDy);
-      if (walkDx !== 0 || walkDy !== 0)   walkBy(camera, controls, walkDx, walkDy);
+      if (walkDx !== 0 || walkDy !== 0)   flyBy(camera, controls, walkDx, walkDy);
       if (lookDx !== 0 || lookDy !== 0)   lookBy(camera, controls, lookDx, lookDy);
-      if (liftDy !== 0)                   liftBy(camera, controls, liftDy);
     }
 
     if (action === "cameraReset") controls.reset();

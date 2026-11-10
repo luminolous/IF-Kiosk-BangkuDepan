@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import * as THREE from "three";
 
-import { liftBy, lookBy, panBy, rotateBy, walkBy, zoomBy } from "../src/lib/cameraMoves.js";
+import { flyBy, lookBy, panBy, rotateBy, zoomBy } from "../src/lib/cameraMoves.js";
 
 // A camera 20 units back from the origin and 20 up, looking at it: tilted
 // 45°, as the kiosk shows a floor.
@@ -91,29 +91,36 @@ test("looking never tips over straight up or down", () => {
   assert.ok(view.y > -1 && view.y < 0);
 });
 
-test("walking keeps a usable speed close to the target", () => {
-  const { camera, controls } = rig([0, 1, 1]);
-  const z = camera.position.z;
-  walkBy(camera, controls, 0, 100);
-  close(z - camera.position.z, 15 * 0.002 * 100);
+test("flying keeps a usable speed close to the target", () => {
+  const { camera, controls } = rig();
+  controls.target.set(0, 19, 19); // same view, but the target a step away
+  const before = camera.position.clone();
+  flyBy(camera, controls, 0, 100);
+  close(before.distanceTo(camera.position), 15 * 0.002 * 100);
 });
 
-test("lifting moves the camera straight up and down, keeping the view", () => {
+test("flying forward follows the view: looking down, it descends", () => {
   const { camera, controls } = rig();
   const view = new THREE.Vector3().subVectors(controls.target, camera.position);
-  liftBy(camera, controls, 5);
-  close(camera.position.y, 25);
+  flyBy(camera, controls, 0, 100);
+  assert.ok(camera.position.y < 20, "went down");
+  assert.ok(camera.position.z < 20, "went forward");
   close(camera.position.x, 0);
-  close(camera.position.z, 20);
+  // Looking 45° down, it drops as far as it goes ahead.
+  close(20 - camera.position.y, 20 - camera.position.z);
   const after = new THREE.Vector3().subVectors(controls.target, camera.position);
   close(after.distanceTo(view), 0);
 });
 
-test("lifting stops at the floor and the ceiling", () => {
+test("flying sideways stays level", () => {
   const { camera, controls } = rig();
-  liftBy(camera, controls, -100);
+  flyBy(camera, controls, -100, 0);
+  close(camera.position.y, 20);
+  assert.ok(camera.position.x > 0, "went right");
+});
+
+test("flying never goes below the ground", () => {
+  const { camera, controls } = rig();
+  for (let i = 0; i < 100; i++) flyBy(camera, controls, 0, 100);
   close(camera.position.y, 0.5);
-  close(controls.target.y, -19.5);
-  liftBy(camera, controls, 1000);
-  close(camera.position.y, 150);
 });

@@ -56,7 +56,7 @@ The kiosk opens a WebSocket as `role=tv`, receives a session id, and renders a Q
 
 <img src="docs/screenshots/phone.webp" alt="The /mobile page on a phone: search, the room list for the current floor, and a touch pad that rotates, pans and zooms the kiosk's camera" width="260" align="right">
 
-The phone gets search, the room list of whichever floor the kiosk shows, and two joysticks for the kiosk's camera, within reach of one thumb: *Gerak* walks along the floor, *Pandang* turns the view in place, and the *Tinggi* buttons between them raise or lower the camera. Tapping the selected room again, or *Semua ruangan*, clears the selection on both screens. The room panel on the kiosk (the right-hand column in the screenshot above) stays open while a phone is paired; otherwise it appears whenever a room is selected.
+The phone gets search, the room list of whichever floor the kiosk shows, and two joysticks for the kiosk's camera, within reach of one thumb: *Gerak* flies the way the camera looks (look down and push forward to descend, look up to climb) and slides left and right, *Pandang* turns the view in place. Tapping the selected room again, or *Semua ruangan*, clears the selection on both screens. The room panel on the kiosk (the right-hand column in the screenshot above) stays open while a phone is paired; otherwise it appears whenever a room is selected.
 
 <br clear="right">
 

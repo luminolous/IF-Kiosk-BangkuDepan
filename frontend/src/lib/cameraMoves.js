@@ -61,9 +61,30 @@ export function panBy(camera, controls, dx, dy, { ground = false, minDistance = 
 // that distance would crawl. The phone's joystick never goes slower than this.
 const MIN_TRAVEL_DISTANCE = 15;
 
-/** Moves along the floor, the way the camera faces, for the phone's move joystick. */
-export function walkBy(camera, controls, dx, dy) {
-  panBy(camera, controls, dx, dy, { ground: true, minDistance: MIN_TRAVEL_DISTANCE });
+// How low the phone can take the camera, in world units: just above the ground.
+const FLY_FLOOR = 0.5;
+
+/**
+ * Flies the way the camera looks, for the phone's move joystick: dy goes
+ * forward and back along the view, so looking down and pushing forward
+ * descends; dx slides left and right, level with the floor. Never below
+ * FLY_FLOOR.
+ */
+export function flyBy(camera, controls, dx, dy) {
+  const speed = Math.max(camera.position.distanceTo(controls.target), MIN_TRAVEL_DISTANCE) * 0.002;
+  const ahead = camera.getWorldDirection(new THREE.Vector3());
+  const level = new THREE.Vector3(ahead.x, 0, ahead.z);
+  // Looking straight down there is no level "ahead"; the top of the screen
+  // decides left and right instead.
+  if (level.lengthSq() < 1e-8) level.copy(camera.up).applyQuaternion(camera.quaternion).setY(0);
+  const right = new THREE.Vector3().crossVectors(level.normalize(), WORLD_UP).normalize();
+
+  const offset = new THREE.Vector3()
+    .addScaledVector(right, -dx * speed)
+    .addScaledVector(ahead,  dy * speed);
+  offset.y = Math.max(offset.y, FLY_FLOOR - camera.position.y);
+  camera.position.add(offset);
+  controls.target.add(offset);
 }
 
 const LOOK_SPEED = 0.004;
@@ -81,17 +102,3 @@ export function lookBy(camera, controls, dx, dy) {
   controls.target.copy(camera.position).add(view);
 }
 
-// How low and high the lift buttons can take the camera, in world units.
-const LIFT_FLOOR   = 0.5;
-const LIFT_CEILING = 150;
-
-/**
- * Raises (dy > 0) or lowers (dy < 0) the camera straight up or down, in world
- * units, for the phone's lift buttons. The view keeps its direction.
- */
-export function liftBy(camera, controls, dy) {
-  const y = Math.max(LIFT_FLOOR, Math.min(LIFT_CEILING, camera.position.y + dy));
-  const step = y - camera.position.y;
-  camera.position.y += step;
-  controls.target.y += step;
-}

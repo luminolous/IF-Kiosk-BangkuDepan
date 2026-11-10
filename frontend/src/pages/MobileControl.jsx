@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, ChevronDown, ChevronUp, Search, X, LoaderCircle, CheckCircle } from "lucide-react";
+import { ArrowLeft, Search, X, LoaderCircle, CheckCircle } from "lucide-react";
 import { DAYS, MENU_FLOORS, EXCLUDE, UI, displayName } from "../lib/constants";
 import { RELAY_URL } from "../lib/config";
 import { loadData } from "../lib/data";
@@ -12,11 +12,9 @@ const TODAY = JS_DAY_TO_ID[new Date().getDay()] || null;
 // deflection.
 const WALK_PX_PER_S = 110;
 const LOOK_PX_PER_S = 220;
-// The lift buttons, in world units per second.
-const LIFT_PER_S    = 12;
-// As big as fits beside the lift buttons: 140px, or less on narrow phones
-// (128px at 360px wide). 104px = side padding, lift buttons and gaps.
-const STICK_SIZE    = "min(140px, calc((100vw - 104px) / 2))";
+// As big as fits two side by side: 150px, less only on phones narrower than
+// 356px. 56px = side padding and the gap between them.
+const STICK_SIZE    = "min(150px, calc((100vw - 56px) / 2))";
 const THUMB_SIZE    = 56;
 const DEADZONE      = 0.12;
 
@@ -83,46 +81,15 @@ function Joystick({ label, onChange }) {
   );
 }
 
-/** A button that calls onHold(true) while pressed and onHold(false) on release. */
-function HoldButton({ label, onHold, children }) {
-  const active = useRef(null);
-  const release = (e) => {
-    if (e.pointerId !== active.current) return;
-    active.current = null;
-    onHold(false);
-  };
-  return (
-    <button
-      type="button"
-      aria-label={label}
-      className="k-button"
-      onPointerDown={(e) => {
-        if (active.current !== null) return;
-        active.current = e.pointerId;
-        e.currentTarget.setPointerCapture(e.pointerId);
-        onHold(true);
-      }}
-      onPointerUp={release}
-      onPointerCancel={release}
-      onLostPointerCapture={release}
-      onContextMenu={(e) => e.preventDefault()}
-      style={{ ...noSelect, width: "48px", height: "54px", padding: 0, display: "flex", alignItems: "center", justifyContent: "center" }}
-    >
-      {children}
-    </button>
-  );
-}
-
 /**
- * Two joysticks within reach of one thumb, with lift buttons between them:
- * the left stick walks along the floor, the right one turns the view in
- * place, and Naik/Turun raise or lower the camera. While any is held, the
- * kiosk's camera moves every frame.
+ * Two joysticks within reach of one thumb: the left one flies the way the
+ * camera looks (look down and push forward to descend), the right one turns
+ * the view in place. While either is held, the kiosk's camera moves every
+ * frame.
  */
 function CameraControls({ send }) {
   const move = useRef({ x: 0, y: 0 });
   const look = useRef({ x: 0, y: 0 });
-  const lift = useRef(0);
   const loop = useRef(null);
   const last = useRef(0);
 
@@ -134,15 +101,14 @@ function CameraControls({ send }) {
     const dt = Math.min(Math.max(now - last.current, 0) / 1000, 0.1);
     last.current = now;
     const m = move.current, l = look.current;
-    if (!m.x && !m.y && !l.x && !l.y && !lift.current) { loop.current = null; return; }
+    if (!m.x && !m.y && !l.x && !l.y) { loop.current = null; return; }
     send("cameraTransform", {
-      // The camera goes where the stick points; walkBy takes finger drags,
+      // The camera goes where the stick points; flyBy takes finger drags,
       // which move the model the opposite way.
       walkDx: -m.x * WALK_PX_PER_S * dt,
       walkDy: -m.y * WALK_PX_PER_S * dt,
       lookDx:  l.x * LOOK_PX_PER_S * dt,
       lookDy:  l.y * LOOK_PX_PER_S * dt,
-      liftDy:  lift.current * LIFT_PER_S * dt,
     });
     loop.current = requestAnimationFrame(tick);
   };
@@ -155,22 +121,11 @@ function CameraControls({ send }) {
 
   const onMove = (x, y) => { move.current = { x, y }; if (x || y) start(); };
   const onLook = (x, y) => { look.current = { x, y }; if (x || y) start(); };
-  const onLift = (dir, held) => {
-    if (held) { lift.current = dir; start(); }
-    else if (lift.current === dir) lift.current = 0;
-  };
 
   return (
     <div style={{ flexShrink: 0, padding: "16px 16px 20px", borderTop: `1px solid ${UI.line}`, background: UI.bg, display: "flex", flexDirection: "column", gap: "14px" }}>
-      <div style={{ display: "flex", justifyContent: "center", gap: "12px" }}>
+      <div style={{ display: "flex", justifyContent: "center", gap: "24px" }}>
         <Joystick label="Gerak" onChange={onMove} />
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "8px" }}>
-          <div style={{ height: STICK_SIZE, display: "flex", flexDirection: "column", justifyContent: "center", gap: "10px" }}>
-            <HoldButton label="Naik" onHold={(held) => onLift(1, held)}><ChevronUp size={24} /></HoldButton>
-            <HoldButton label="Turun" onHold={(held) => onLift(-1, held)}><ChevronDown size={24} /></HoldButton>
-          </div>
-          <span style={{ fontSize: "14px", fontWeight: 500, color: UI.text }}>Tinggi</span>
-        </div>
         <Joystick label="Pandang" onChange={onLook} />
       </div>
       <button className="k-button" onClick={() => send("cameraReset")} style={{ background: "transparent" }}>

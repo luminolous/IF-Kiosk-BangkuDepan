@@ -80,3 +80,18 @@ export function lookBy(camera, controls, dx, dy) {
   view.setFromSpherical(sph);
   controls.target.copy(camera.position).add(view);
 }
+
+// How low and high the lift buttons can take the camera, in world units.
+const LIFT_FLOOR   = 0.5;
+const LIFT_CEILING = 150;
+
+/**
+ * Raises (dy > 0) or lowers (dy < 0) the camera straight up or down, in world
+ * units, for the phone's lift buttons. The view keeps its direction.
+ */
+export function liftBy(camera, controls, dy) {
+  const y = Math.max(LIFT_FLOOR, Math.min(LIFT_CEILING, camera.position.y + dy));
+  const step = y - camera.position.y;
+  camera.position.y += step;
+  controls.target.y += step;
+}

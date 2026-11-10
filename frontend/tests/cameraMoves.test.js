@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import * as THREE from "three";
 
-import { lookBy, panBy, rotateBy, walkBy, zoomBy } from "../src/lib/cameraMoves.js";
+import { liftBy, lookBy, panBy, rotateBy, walkBy, zoomBy } from "../src/lib/cameraMoves.js";
 
 // A camera 20 units back from the origin and 20 up, looking at it: tilted
 // 45°, as the kiosk shows a floor.
@@ -96,4 +96,24 @@ test("walking keeps a usable speed close to the target", () => {
   const z = camera.position.z;
   walkBy(camera, controls, 0, 100);
   close(z - camera.position.z, 15 * 0.002 * 100);
+});
+
+test("lifting moves the camera straight up and down, keeping the view", () => {
+  const { camera, controls } = rig();
+  const view = new THREE.Vector3().subVectors(controls.target, camera.position);
+  liftBy(camera, controls, 5);
+  close(camera.position.y, 25);
+  close(camera.position.x, 0);
+  close(camera.position.z, 20);
+  const after = new THREE.Vector3().subVectors(controls.target, camera.position);
+  close(after.distanceTo(view), 0);
+});
+
+test("lifting stops at the floor and the ceiling", () => {
+  const { camera, controls } = rig();
+  liftBy(camera, controls, -100);
+  close(camera.position.y, 0.5);
+  close(controls.target.y, -19.5);
+  liftBy(camera, controls, 1000);
+  close(camera.position.y, 150);
 });

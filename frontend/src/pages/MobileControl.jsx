@@ -14,8 +14,10 @@ const WALK_PX_PER_S = 110;
 const LOOK_PX_PER_S = 220;
 // The lift buttons, in world units per second.
 const LIFT_PER_S    = 12;
-const STICK_SIZE    = 112;
-const THUMB_SIZE    = 48;
+// As big as fits beside the lift buttons: 140px, or less on narrow phones
+// (128px at 360px wide). 104px = side padding, lift buttons and gaps.
+const STICK_SIZE    = "min(140px, calc((100vw - 104px) / 2))";
+const THUMB_SIZE    = 56;
 const DEADZONE      = 0.12;
 
 const noSelect = { touchAction: "none", userSelect: "none", WebkitUserSelect: "none", WebkitTouchCallout: "none" };
@@ -24,10 +26,10 @@ const noSelect = { touchAction: "none", userSelect: "none", WebkitUserSelect: "n
 function Joystick({ label, onChange }) {
   const thumb  = useRef(null);
   const active = useRef(null);
-  const reach  = (STICK_SIZE - THUMB_SIZE) / 2;
 
   const update = (e) => {
     const box = e.currentTarget.getBoundingClientRect();
+    const reach = (box.width - THUMB_SIZE) / 2;
     const x = e.clientX - (box.left + box.width / 2);
     const y = e.clientY - (box.top + box.height / 2);
     const len  = Math.hypot(x, y);
@@ -66,7 +68,7 @@ function Joystick({ label, onChange }) {
         onContextMenu={(e) => e.preventDefault()}
         style={{
           ...noSelect,
-          width: `${STICK_SIZE}px`, height: `${STICK_SIZE}px`, borderRadius: "50%",
+          width: STICK_SIZE, height: STICK_SIZE, borderRadius: "50%",
           background: UI.surface, border: `1px solid ${UI.line}`,
           display: "flex", alignItems: "center", justifyContent: "center",
         }}
@@ -104,7 +106,7 @@ function HoldButton({ label, onHold, children }) {
       onPointerCancel={release}
       onLostPointerCapture={release}
       onContextMenu={(e) => e.preventDefault()}
-      style={{ ...noSelect, width: "52px", height: "50px", padding: 0, display: "flex", alignItems: "center", justifyContent: "center" }}
+      style={{ ...noSelect, width: "48px", height: "54px", padding: 0, display: "flex", alignItems: "center", justifyContent: "center" }}
     >
       {children}
     </button>
@@ -160,10 +162,10 @@ function CameraControls({ send }) {
 
   return (
     <div style={{ flexShrink: 0, padding: "16px 16px 20px", borderTop: `1px solid ${UI.line}`, background: UI.bg, display: "flex", flexDirection: "column", gap: "14px" }}>
-      <div style={{ display: "flex", justifyContent: "center", gap: "16px" }}>
+      <div style={{ display: "flex", justifyContent: "center", gap: "12px" }}>
         <Joystick label="Gerak" onChange={onMove} />
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "8px" }}>
-          <div style={{ height: `${STICK_SIZE}px`, display: "flex", flexDirection: "column", justifyContent: "center", gap: "8px" }}>
+          <div style={{ height: STICK_SIZE, display: "flex", flexDirection: "column", justifyContent: "center", gap: "10px" }}>
             <HoldButton label="Naik" onHold={(held) => onLift(1, held)}><ChevronUp size={24} /></HoldButton>
             <HoldButton label="Turun" onHold={(held) => onLift(-1, held)}><ChevronDown size={24} /></HoldButton>
           </div>

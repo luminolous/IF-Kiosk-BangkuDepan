@@ -56,11 +56,11 @@ The kiosk opens a WebSocket as `role=tv`, receives a session id, and renders a Q
 
 <img src="docs/screenshots/phone.webp" alt="The /mobile page on a phone: search, the room list for the current floor, and a touch pad that rotates, pans and zooms the kiosk's camera" width="260" align="right">
 
-The phone gets search, the room list of whichever floor the kiosk shows, and game-style controls for the kiosk's camera: a joystick walks along the floor, the ▲▼ buttons fly up and down, and a look pad turns the view in place (drag) and zooms (pinch). The layout follows the phone, upright or sideways. The room panel on the kiosk (the right-hand column in the screenshot above) appears whenever a room is chosen, from the kiosk screen or a phone.
+The phone gets search, the room list of whichever floor the kiosk shows, and two joysticks for the kiosk's camera, within reach of one thumb: *Gerak* walks along the floor, *Pandang* turns the view in place. Tapping the selected room again, or *Semua ruangan*, clears the selection on both screens. The room panel on the kiosk (the right-hand column in the screenshot above) only appears while a phone is paired. When pairing is off (`VITE_RELAY_URL=none`), it appears for rooms tapped on the kiosk screen instead.
 
 <br clear="right">
 
-**Touch gestures** on the kiosk's screen work by default like a map app: one finger pans along the floor, two fingers rotate the view, and a pinch zooms. Opening the kiosk with `?gestures=orbit`, e.g. `https://hadziq.github.io/IF-Kiosk/?gestures=orbit`, switches it to the original scheme, with one finger to rotate and two to pan and pinch. The phone's controls do not depend on this choice. The two are kept side by side to be compared with visitors, and the one that loses will be removed (`GESTURES` in `frontend/src/lib/config.js`).
+**Touch gestures** on the kiosk's screen work by default like a map app: one finger pans along the floor, two fingers rotate the view, and a pinch zooms. Opening the kiosk with `?gestures=orbit`, e.g. `https://hadziq.github.io/IF-Kiosk/?gestures=orbit`, switches it to the original scheme, with one finger to rotate and two to pan and pinch. The two are kept side by side to be compared with visitors, and the one that loses will be removed (`GESTURES` in `frontend/src/lib/config.js`).
 
 ## Tech stack
 

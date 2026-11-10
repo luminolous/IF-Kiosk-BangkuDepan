@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { C, displayName } from "../lib/constants";
+import { UI, displayName } from "../lib/constants";
 
 const toMinutes = (hhmm) => Number(hhmm.slice(0, 2)) * 60 + Number(hhmm.slice(3, 5));
 const pad = (n) => String(n).padStart(2, "0");
@@ -11,12 +11,12 @@ const duration = (minutes) => (minutes < 60 ? `${minutes} mnt` : `${Math.floor(m
 function Chip({ children, solid = false }) {
   return (
     <span style={{
-      background: solid ? C.live : "transparent",
-      color: solid ? C.bg : C.sub,
-      border: `1px solid ${solid ? C.live : C.border}`,
-      borderRadius: "999px", padding: solid ? "3px 11px" : "1px 7px",
-      fontSize: solid ? "14px" : "11px", fontWeight: solid ? 500 : 400,
-      letterSpacing: "0.5px", whiteSpace: "nowrap",
+      background: solid ? UI.live : "transparent",
+      color: solid ? UI.bg : UI.sub,
+      border: solid ? "none" : `1px solid ${UI.line}`,
+      borderRadius: "6px", padding: solid ? "2px 8px" : "0 6px",
+      fontSize: solid ? "14px" : "12px", fontWeight: solid ? 600 : 500,
+      whiteSpace: "nowrap", verticalAlign: "middle",
     }}>
       {children}
     </span>
@@ -30,37 +30,32 @@ function RunningRow({ item, minute, focused, rowRef }) {
 
   return (
     <div ref={rowRef} style={{
-      background: focused ? C.liveDim : C.card,
-      // Spelled out per side: mixing border and borderLeft makes React warn
-      // when the focus changes the colour.
-      borderTop: `1px solid ${focused ? C.live : C.border}`,
-      borderRight: `1px solid ${focused ? C.live : C.border}`,
-      borderBottom: `1px solid ${focused ? C.live : C.border}`,
-      borderLeft: `4px solid ${C.live}`,
-      borderRadius: "6px", padding: "12px 14px",
+      background: focused ? UI.surface : "transparent",
+      // The bar on the left matches the colour of the room on the map.
+      boxShadow: `inset 3px 0 0 ${focused ? UI.live : UI.line}`,
+      borderRadius: "10px", padding: "12px 14px 12px 18px",
       display: "flex", flexDirection: "column", gap: "6px",
-      boxShadow: focused ? C.liveGlow : "none",
-      transition: "background 0.4s, border-color 0.4s, box-shadow 0.4s",
+      transition: "background 0.4s, box-shadow 0.4s",
     }}>
       <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-        <span style={{ fontSize: "20px", fontWeight: 700, color: C.text, letterSpacing: "1px", whiteSpace: "nowrap" }}>{displayName(item.nama_ruang)}</span>
+        <span style={{ fontSize: "20px", fontWeight: 600, color: UI.text, whiteSpace: "nowrap" }}>{displayName(item.nama_ruang)}</span>
         <Chip solid>{item.short}</Chip>
       </div>
-      <p style={{ fontSize: "15px", color: C.text, lineHeight: 1.3 }}>
+      <p style={{ fontSize: "15px", color: UI.text, lineHeight: 1.4 }}>
         {item.name}
         {item.program && <> <Chip>{item.program}</Chip></>}
         {item.english && <> <Chip>EN</Chip></>}
       </p>
       {lecturers.length > 0 && (
-        <p style={{ fontSize: "13px", color: C.sub }}>
+        <p style={{ fontSize: "14px", color: UI.sub }}>
           {shortName(lecturers[0])}{lecturers.length > 1 && ` +${lecturers.length - 1}`}
         </p>
       )}
       <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-        <div style={{ flex: 1, height: "4px", background: C.border, borderRadius: "2px", overflow: "hidden" }}>
-          <div style={{ width: `${progress * 100}%`, height: "100%", background: C.live, transition: "width 1s" }} />
+        <div style={{ flex: 1, height: "4px", background: UI.line, borderRadius: "2px", overflow: "hidden" }}>
+          <div style={{ width: `${progress * 100}%`, height: "100%", background: UI.text, transition: "width 1s" }} />
         </div>
-        <span style={{ fontSize: "12px", color: C.sub, whiteSpace: "nowrap" }}>
+        <span style={{ fontSize: "13px", color: UI.sub, whiteSpace: "nowrap" }}>
           {item.jam_mulai}–{item.jam_selesai} · sisa {duration(end - minute)}
         </span>
       </div>
@@ -72,18 +67,18 @@ function NextUp({ next, compact }) {
   const when = next.today ? `pukul ${next.jam_mulai}` : `${next.hari}, ${next.jam_mulai}`;
   const shown = compact ? next.classes.slice(0, 6) : next.classes;
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-      <p style={{ fontSize: "11px", letterSpacing: "2px", color: C.sub, textTransform: "uppercase" }}>
-        Berikutnya · {when}
+    <div style={{ display: "flex", flexDirection: "column", gap: "8px", paddingTop: "4px" }}>
+      <p style={{ fontSize: "14px", fontWeight: 500, color: UI.sub }}>
+        Berikutnya, {when}
       </p>
       <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
         {shown.map((c) => (
-          <span key={c.id} style={{ border: `1px solid ${C.border}`, borderRadius: "6px", padding: "5px 9px", fontSize: "13px", color: C.text, background: C.card }}>
-            {displayName(c.nama_ruang)} <span style={{ color: C.sub }}>· {c.short}</span>
+          <span key={c.id} style={{ borderRadius: "8px", padding: "5px 10px", fontSize: "14px", color: UI.text, background: UI.surface }}>
+            {displayName(c.nama_ruang)} <span style={{ color: UI.sub }}>· {c.short}</span>
           </span>
         ))}
         {shown.length < next.classes.length && (
-          <span style={{ padding: "5px 4px", fontSize: "13px", color: C.sub }}>+{next.classes.length - shown.length} lagi</span>
+          <span style={{ padding: "5px 4px", fontSize: "14px", color: UI.sub }}>+{next.classes.length - shown.length} lagi</span>
         )}
       </div>
     </div>
@@ -93,8 +88,9 @@ function NextUp({ next, compact }) {
 /**
  * The idle board: classes in progress on the kiosk's floor, the next ones to
  * start, and a clock. `focusRoom` is the class the 3D map is pointing at.
+ * `top` leaves room for the QR hint above it.
  */
-export function NowBoard({ floor, info, now, focusRoom }) {
+export function NowBoard({ floor, info, now, focusRoom, top = 16 }) {
   const focusedRef = useRef(null);
   const minute = now.getHours() * 60 + now.getMinutes();
   const { running, next, day } = info;
@@ -105,28 +101,28 @@ export function NowBoard({ floor, info, now, focusRoom }) {
 
   return (
     <div style={{
-      position: "absolute", top: "16px", right: "20px", width: "400px",
-      maxHeight: "calc(100% - 36px)",
-      background: "rgba(8,9,15,0.9)", border: `1px solid ${C.live}`, boxShadow: C.liveGlow,
-      borderRadius: "8px", backdropFilter: "blur(8px)",
+      position: "absolute", top: `${top}px`, right: "20px", width: "400px",
+      maxHeight: `calc(100% - ${top + 20}px)`,
+      background: "rgba(12,24,33,0.94)", border: `1px solid ${UI.line}`,
+      borderRadius: "14px", backdropFilter: "blur(8px)",
       display: "flex", flexDirection: "column", overflow: "hidden",
-      animation: "boardIn 0.6s ease-out",
+      animation: "boardIn 0.6s ease-out", fontFamily: UI.font, color: UI.text,
     }}>
-      <div style={{ padding: "16px 18px 12px", borderBottom: `1px solid ${C.border}`, display: "flex", alignItems: "flex-end", gap: "12px" }}>
+      <div style={{ padding: "18px 20px 14px", borderBottom: `1px solid ${UI.line}`, display: "flex", alignItems: "flex-end", gap: "12px" }}>
         <div style={{ flex: 1 }}>
-          <p style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "12px", letterSpacing: "2px", color: C.live, textTransform: "uppercase", textShadow: C.liveGlow }}>
-            <span style={{ width: "9px", height: "9px", borderRadius: "50%", background: C.live, animation: "livePulse 1.6s ease-in-out infinite" }} />
+          <p style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "14px", fontWeight: 500, color: UI.text }}>
+            <span style={{ width: "9px", height: "9px", borderRadius: "50%", background: UI.live, animation: "livePulse 1.6s ease-in-out infinite" }} />
             Sedang berlangsung
           </p>
-          <p style={{ fontSize: "20px", fontWeight: 700, color: C.text, letterSpacing: "1px", marginTop: "6px" }}>{floor}</p>
+          <p style={{ fontSize: "22px", fontWeight: 600, color: UI.text, marginTop: "2px" }}>{floor}</p>
         </div>
         <div style={{ textAlign: "right" }}>
-          <p style={{ fontSize: "30px", fontWeight: 500, color: C.text, lineHeight: 1 }}>{pad(now.getHours())}:{pad(now.getMinutes())}</p>
-          <p style={{ fontSize: "12px", color: C.sub, marginTop: "4px" }}>{day ?? "Akhir pekan"}</p>
+          <p style={{ fontSize: "32px", fontWeight: 600, color: UI.text, lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>{pad(now.getHours())}:{pad(now.getMinutes())}</p>
+          <p style={{ fontSize: "14px", color: UI.sub, marginTop: "4px" }}>{day ?? "Akhir pekan"}</p>
         </div>
       </div>
 
-      <div style={{ padding: "14px 18px", display: "flex", flexDirection: "column", gap: "10px", overflowY: "auto" }}>
+      <div style={{ padding: "12px 14px 16px", display: "flex", flexDirection: "column", gap: "8px", overflowY: "auto" }}>
         {running.length > 0
           ? running.map((item) => (
               <RunningRow key={item.id} item={item} minute={minute}
@@ -134,14 +130,14 @@ export function NowBoard({ floor, info, now, focusRoom }) {
                 rowRef={item.nama_ruang === focusRoom ? focusedRef : null} />
             ))
           : (
-            <p style={{ fontSize: "15px", color: C.sub, textAlign: "center", padding: "14px 0", letterSpacing: "0.5px" }}>
+            <p style={{ fontSize: "15px", color: UI.sub, textAlign: "center", padding: "14px 0" }}>
               Tidak ada kelas yang sedang berlangsung
             </p>
           )}
         {next && <NextUp next={next} compact={running.length > 0} />}
       </div>
 
-      <p style={{ padding: "10px 18px 12px", borderTop: `1px solid ${C.border}`, fontSize: "11px", color: C.sub, letterSpacing: "0.5px" }}>
+      <p style={{ padding: "12px 20px 14px", borderTop: `1px solid ${UI.line}`, fontSize: "13px", color: UI.sub, lineHeight: 1.45 }}>
         Sesuai jadwal semester · scan QR di kiri bawah untuk mengontrol papan ini dan menjelajah
       </p>
     </div>

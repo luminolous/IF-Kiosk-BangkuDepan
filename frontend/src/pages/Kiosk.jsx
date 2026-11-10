@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 
-import { C, EXCLUDE, getRoomSort, groupMeshNames } from "../lib/constants";
+import { ArrowDownLeft } from "lucide-react";
+import { EXCLUDE, UI, getRoomSort, groupMeshNames } from "../lib/constants";
 import { loadData }     from "../lib/data";
 import { getClassesNow, getRoom } from "../lib/directory";
 import { GESTURES, RELAY_URL, kioskNow } from "../lib/config";
-import { liftBy, lookBy, panBy, rotateBy, walkBy, zoomBy } from "../lib/cameraMoves";
+import { lookBy, panBy, rotateBy, walkBy, zoomBy } from "../lib/cameraMoves";
 import { useThreeScene }  from "../hooks/useThreeScene";
 import { useAnimations }  from "../hooks/useAnimations";
 import { useModelLoader } from "../hooks/useModelLoader";
@@ -14,7 +15,6 @@ import { SchedulePanel }  from "../components/SchedulePanel";
 import { useTVWebSocket } from "../hooks/useWebSocket";
 import { QRPanel }        from "../components/QRPanel";
 import { NowBoard }       from "../components/NowBoard";
-import { HelpButton }     from "../components/HelpButton";
 
 // How often the kiosk checks whether a new data version has been deployed.
 const DATA_CHECK_MS = 10 * 60 * 1000;
@@ -115,16 +115,15 @@ export default function Kiosk() {
     if (action === "cameraZoom")   zoomBy(camera, controls, payload.scale ?? (payload.direction === "in" ? 0.93 : 1.07));
     if (action === "cameraPan")    panBy(camera, controls, payload.dx, payload.dy, { ground });
 
-    // One frame of the phone's controls, batched: the joystick walks along the
-    // floor, the lift buttons fly up and down, the look pad turns the view and zooms.
+    // One frame of the phone's controls, batched: the move joystick walks
+    // along the floor, the look joystick turns the view in place.
     if (action === "cameraTransform") {
-      const { zoom = 1, panDx = 0, panDy = 0, rotateDx = 0, rotateDy = 0, walkDx = 0, walkDy = 0, lift = 0, lookDx = 0, lookDy = 0 } = payload;
+      const { zoom = 1, panDx = 0, panDy = 0, rotateDx = 0, rotateDy = 0, walkDx = 0, walkDy = 0, lookDx = 0, lookDy = 0 } = payload;
       if (zoom !== 1)                     zoomBy(camera, controls, zoom);
       if (panDx !== 0 || panDy !== 0)     panBy(camera, controls, panDx, panDy, { ground });
       if (rotateDx !== 0 || rotateDy !== 0) rotateBy(camera, controls, rotateDx, rotateDy);
-      if (lookDx !== 0 || lookDy !== 0)   lookBy(camera, controls, lookDx, lookDy);
       if (walkDx !== 0 || walkDy !== 0)   walkBy(camera, controls, walkDx, walkDy);
-      if (lift !== 0)                     liftBy(camera, controls, lift);
+      if (lookDx !== 0 || lookDy !== 0)   lookBy(camera, controls, lookDx, lookDy);
     }
 
     if (action === "cameraReset") controls.reset();
@@ -206,6 +205,7 @@ export default function Kiosk() {
   // ── Idle board: classes in progress on the home floor ────────────
   useEffect(() => { loadData().then(setKioskData).catch(() => {}); }, []);
 
+  const qrHint = !!RELAY_URL && !!mobileUrl && !phoneConnected;
   const boardShown = idle && !phoneConnected && view === "rooms" && activeFloor === HOME_FLOOR && status === "success" && !!kioskData;
   const classesNow = useMemo(() => (kioskData ? getClassesNow(kioskData, HOME_FLOOR, clock) : null), [kioskData, clock]);
   const running = boardShown ? classesNow.running : [];
@@ -266,7 +266,7 @@ export default function Kiosk() {
   // ── Layout ────────────────────────────────────────────────────────
   return (
     <div
-      style={{ display: "flex", height: "100vh", background: C.bg, fontFamily: "'DM Mono', monospace", color: C.text }}
+      style={{ display: "flex", height: "100vh", background: UI.bg, fontFamily: UI.font, color: UI.text }}
       onDragOver={(e) => e.preventDefault()}
       onDrop={(e) => { e.preventDefault(); loadByFiles(e.dataTransfer.files); }}
     >
@@ -289,49 +289,55 @@ export default function Kiosk() {
       <div style={{ flex: 1, minWidth: 0, position: "relative", overflow: "hidden" }}>
         <div ref={mountRef} style={{ width: "100%", height: "100%" }} />
 
-        <HelpButton variant="kiosk" style={{ position: "absolute", top: "16px", right: "16px", zIndex: 5 }} />
-
         {activeFloor && status === "success" && (
-          <div style={{ position: "absolute", top: "16px", left: "16px", background: "rgba(8,9,15,0.85)", border: `1px solid ${C.cyan}`, boxShadow: C.cyanGlow, borderRadius: "6px", padding: "8px 16px", fontSize: "18px", color: C.cyan, letterSpacing: "1px", backdropFilter: "blur(6px)" }}>
-            {activeFloor}{activeRoom && <span style={{ color: C.sub }}> / {activeRoom.replace(/_/g, " ")}</span>}
+          <div style={{ position: "absolute", top: "16px", left: "16px", background: "rgba(12,24,33,0.9)", border: `1px solid ${UI.line}`, borderRadius: "10px", padding: "8px 16px", fontSize: "18px", fontWeight: 600, color: UI.text, backdropFilter: "blur(6px)" }}>
+            {activeFloor}{activeRoom && <span style={{ color: UI.sub, fontWeight: 400 }}> / {activeRoom.replace(/_/g, " ")}</span>}
+          </div>
+        )}
+
+        {/* Points visitors at the QR code until a phone pairs. */}
+        {qrHint && (
+          <div role="note" style={{
+            position: "absolute", top: "16px", left: "50%", transform: "translate(-50%, 0)",
+            maxWidth: "calc(100% - 32px)", display: "flex", alignItems: "center", gap: "14px",
+            padding: "10px 20px 10px 12px", borderRadius: "14px",
+            background: UI.text, color: UI.bg, boxShadow: "0 8px 24px rgba(0,0,0,0.35)",
+            animation: "hintIn 0.5s ease-out", pointerEvents: "none",
+          }}>
+            <span style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "36px", height: "36px", borderRadius: "10px", background: UI.bg, color: UI.text, flexShrink: 0 }}>
+              <ArrowDownLeft size={22} />
+            </span>
+            <span>
+              <span style={{ display: "block", fontSize: "18px", fontWeight: 600, lineHeight: 1.25 }}>Anda bisa kontrol kiosk dengan scan QR code</span>
+              <span style={{ display: "block", fontSize: "14px", opacity: 0.8 }}>Kode QR ada di kiri bawah layar</span>
+            </span>
           </div>
         )}
 
         {boardShown && (
-          <NowBoard floor={HOME_FLOOR} info={classesNow} now={clock} focusRoom={focusRoom} />
+          <NowBoard floor={HOME_FLOOR} info={classesNow} now={clock} focusRoom={focusRoom} top={qrHint ? 96 : 16} />
         )}
 
         {phoneConnected && view === "rooms" && activeFloor && activeFloor !== "Lantai 1" && status === "success" && (
           <div style={{
             position: "absolute", bottom: "20px", right: "20px",
-            background: "rgba(8,9,15,0.9)", border: `1px solid ${C.green}`,
-            boxShadow: C.greenGlow,
-            borderRadius: "8px", padding: "10px 16px",
-            display: "flex", alignItems: "center", gap: "8px",
+            background: "rgba(12,24,33,0.92)", border: `1px solid ${UI.line}`,
+            borderRadius: "10px", padding: "10px 16px",
+            display: "flex", alignItems: "center", gap: "10px",
             backdropFilter: "blur(8px)",
-            fontFamily: "'DM Mono', monospace",
           }}>
-            <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: C.green, boxShadow: C.greenGlow, flexShrink: 0 }} />
-            <span style={{ fontSize: "12px", color: C.green, letterSpacing: "0.5px" }}>
+            <span style={{ width: "10px", height: "10px", borderRadius: "50%", background: UI.ok, flexShrink: 0 }} />
+            <span style={{ fontSize: "15px", fontWeight: 500, color: UI.text }}>
               Anda berada di Lantai 1
             </span>
           </div>
         )}
       </div>
 
-      {/* Shown for a paired phone, or whenever a room is chosen on the kiosk
-          screen itself, so a visitor without a phone still gets the info. */}
+      {/* Always there while a phone is paired (or with no relay, when nobody
+          can pair); otherwise only while a room is selected on the screen. */}
       {(phoneConnected || !RELAY_URL || activeRoom) && (
-        <div style={{ position: "relative", width: "300px", minWidth: "300px", height: "100%", flexShrink: 0 }}>
-          {activeRoom && (
-            <button
-              onClick={clearRoom}
-              aria-label="Tutup informasi ruangan"
-              style={{ position: "absolute", top: "8px", right: "8px", zIndex: 1, width: "48px", height: "48px", borderRadius: "8px", border: `1px solid ${C.border}`, background: C.card, color: C.text, fontSize: "24px", cursor: "pointer" }}
-            >
-              ×
-            </button>
-          )}
+        <div style={{ width: "300px", minWidth: "300px", height: "100%", flexShrink: 0 }}>
           <SchedulePanel
             roomName={activeRoom}
             roomData={roomData}

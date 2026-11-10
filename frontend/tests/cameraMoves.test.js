@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import * as THREE from "three";
 
-import { liftBy, lookBy, panBy, rotateBy, walkBy, zoomBy } from "../src/lib/cameraMoves.js";
+import { lookBy, panBy, rotateBy, walkBy, zoomBy } from "../src/lib/cameraMoves.js";
 
 // A camera 20 units back from the origin and 20 up, looking at it: tilted
 // 45°, as the kiosk shows a floor.
@@ -65,27 +65,6 @@ test("rotating keeps the distance to the target, and zoom stays within its limit
   close(camera.position.distanceTo(controls.target), controls.maxDistance);
 });
 
-test("lifting moves the camera and its target up together, keeping the view", () => {
-  const { camera, controls } = rig();
-  const before = camera.position.clone().sub(controls.target);
-  liftBy(camera, controls, 100);
-  assert.ok(controls.target.y > 0);
-  const after = camera.position.clone().sub(controls.target);
-  close(after.x, before.x);
-  close(after.y, before.y);
-  close(after.z, before.z);
-});
-
-test("lifting stops at the floor and at the top of the flying range", () => {
-  const { camera, controls } = rig();
-  liftBy(camera, controls, -1e6);
-  close(camera.position.y, 0.5);
-  close(controls.target.y, -19.5);
-  liftBy(camera, controls, 1e6);
-  close(camera.position.y, 150);
-  close(controls.target.y, 130);
-});
-
 test("looking turns the view but leaves the camera where it is", () => {
   const { camera, controls } = rig();
   const distance = camera.position.distanceTo(controls.target);
@@ -96,7 +75,7 @@ test("looking turns the view but leaves the camera where it is", () => {
   close(camera.position.distanceTo(controls.target), distance);
 });
 
-test("dragging right looks right, dragging up looks up", () => {
+test("pushing the look stick right looks right, up looks up", () => {
   const { camera, controls } = rig();
   const startY = controls.target.y;
   lookBy(camera, controls, 40, 0);

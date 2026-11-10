@@ -58,31 +58,19 @@ export function panBy(camera, controls, dx, dy, { ground = false, minDistance = 
 }
 
 // Inside the model the camera sits close to its target, and moves scaled by
-// that distance would crawl. The drone controls never go slower than this.
+// that distance would crawl. The phone's joystick never goes slower than this.
 const MIN_TRAVEL_DISTANCE = 15;
 
-/** Moves along the floor, the way the camera faces, for the phone's joystick. */
+/** Moves along the floor, the way the camera faces, for the phone's move joystick. */
 export function walkBy(camera, controls, dx, dy) {
   panBy(camera, controls, dx, dy, { ground: true, minDistance: MIN_TRAVEL_DISTANCE });
-}
-
-// How high the camera may fly. The models stand on y = 0.
-const LIFT_MIN = 0.5;
-const LIFT_MAX = 150;
-
-/** Flies the camera and its target straight up (px > 0) or down, within limits. */
-export function liftBy(camera, controls, px) {
-  const speed = Math.max(camera.position.distanceTo(controls.target), MIN_TRAVEL_DISTANCE) * 0.002;
-  const y = Math.max(LIFT_MIN, Math.min(LIFT_MAX, camera.position.y + px * speed));
-  controls.target.y += y - camera.position.y;
-  camera.position.y = y;
 }
 
 const LOOK_SPEED = 0.004;
 
 /**
- * Turns the view while the camera stays where it is, as in a first-person
- * game: dx looks left and right, dy looks up and down. Only the target moves.
+ * Turns the view while the camera stays where it is, for the phone's look
+ * joystick: dx turns left and right, dy looks up and down. Only the target moves.
  */
 export function lookBy(camera, controls, dx, dy) {
   const view = new THREE.Vector3().subVectors(controls.target, camera.position);

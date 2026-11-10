@@ -107,3 +107,17 @@ export const getRoomSort = (floorName) => {
 };
 
 export const displayName = (name) => name.replace(/_/g, " ");
+
+// The 2D interface: sidebar, panels, board and the phone page. The 3D scene,
+// its labels and its highlight colours keep using C above.
+export const UI = {
+  black:   "#000000",
+  bg:      "#0C1821",
+  surface: "#1B2A41",
+  line:    "#324A5F",
+  text:    "#CCC9DC",
+  sub:     "rgba(204,201,220,0.68)",
+  live:    "#22d3ee",
+  ok:      "#22c55e",
+  font:    "'Poppins', system-ui, sans-serif",
+};

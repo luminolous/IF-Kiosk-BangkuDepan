@@ -37,14 +37,9 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm test
-      - name: Name the prototype
-        id: label
-        run: |
-          echo "text=Student prototype · ${{ github.event.repository.name }} · not the official kiosk" >> "$GITHUB_OUTPUT"
       - run: npm run build
         env:
           BASE_PATH: /${{ github.event.repository.name }}/
-          VITE_PROTOTYPE_LABEL: ${{ steps.label.outputs.text }}
           VITE_RELAY_URL: ${{ vars.RELAY_URL || 'wss://if-kiosk-relay.labgigaits.workers.dev' }}
       - uses: actions/upload-pages-artifact@v3
         with:

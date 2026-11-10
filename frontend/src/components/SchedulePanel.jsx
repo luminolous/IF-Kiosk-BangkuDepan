@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { C, displayName, DAYS } from "../lib/constants";
+import { UI, displayName, DAYS } from "../lib/constants";
 import { asset } from "../lib/config";
 
 const JS_DAY_TO_ID = ["", ...DAYS, ""];
@@ -29,23 +29,17 @@ function getInitials(name = "") {
 }
 
 function DosenPhoto({ kode, name }) {
-  const size = 150;
+  const size = 64;
   const [failed, setFailed] = useState(false);
   const src = asset(`picture/${encodeURIComponent(kode)}.webp`);
+  const box = { width: `${size}px`, height: `${size}px`, borderRadius: "10px", flexShrink: 0 };
 
   if (!failed) {
-    return (
-      <img
-        src={src}
-        alt={name}
-        onError={() => setFailed(true)}
-        style={{ width: "100%", maxWidth: `${size}px`, aspectRatio: "1 / 1", borderRadius: "6px", objectFit: "cover", border: `1px solid ${C.blue}80`, flexShrink: 0 }}
-      />
-    );
+    return <img src={src} alt={name} onError={() => setFailed(true)} style={{ ...box, objectFit: "cover", background: UI.surface }} />;
   }
 
   return (
-    <div style={{ width: "100%", maxWidth: `${size}px`, aspectRatio: "1 / 1", borderRadius: "6px", border: `1px solid ${C.blue}80`, background: C.blueDim, color: C.blue, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "22px", fontWeight: "700", flexShrink: 0 }}>
+    <div style={{ ...box, background: UI.line, color: UI.text, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "20px", fontWeight: 600 }}>
       {getInitials(name)}
     </div>
   );
@@ -53,38 +47,49 @@ function DosenPhoto({ kode, name }) {
 
 const panelStyle = {
   width: "300px", minWidth: "300px",
-  background: C.sidebar, borderLeft: `1px solid ${C.border}`,
+  background: UI.bg, borderLeft: `1px solid ${UI.line}`,
   display: "flex", flexDirection: "column",
   flexShrink: 0, height: "100%",
-  overflowY: "auto", fontFamily: "'DM Mono', monospace",
+  overflowY: "auto", fontFamily: UI.font, color: UI.text,
 };
 
-function ScheduleItems({ items, color, loading, error, today }) {
-  if (loading) return (
-    <div style={{ display: "flex", alignItems: "center", gap: "8px", color: C.cyan, fontSize: "12px" }}>
-      <span style={{ animation: "spin 1s linear infinite", display: "inline-block" }}>...</span> Memuat jadwal...
+function Heading({ kind, title, subtitle }) {
+  return (
+    <div style={{ padding: "24px 20px 18px", borderBottom: `1px solid ${UI.line}` }}>
+      <p style={{ fontSize: "13px", fontWeight: 500, color: UI.sub, margin: "0 0 4px" }}>{kind}</p>
+      <p style={{ fontSize: "24px", fontWeight: 600, color: UI.text, margin: 0, lineHeight: 1.25 }}>{title}</p>
+      {subtitle && <p style={{ fontSize: "15px", color: UI.sub, margin: "4px 0 0" }}>{subtitle}</p>}
     </div>
   );
+}
+
+function Empty({ children }) {
+  return <p style={{ fontSize: "15px", color: UI.sub, textAlign: "center", padding: "24px 0" }}>{children}</p>;
+}
+
+function ScheduleItems({ items, loading, error, today }) {
+  if (loading) return <Empty>Memuat jadwal...</Empty>;
   if (error) return (
-    <div style={{ background: "#200a10", border: "1px solid #5a1020", borderRadius: "6px", padding: "10px", fontSize: "12px", color: "#ff4060" }}>
-      ! {error}
+    <div style={{ background: "#2a1218", border: "1px solid #6b2a36", borderRadius: "8px", padding: "10px 12px", fontSize: "14px", color: "#f3b6c0" }}>
+      {error}
     </div>
   );
-  if (!today) return <p style={{ fontSize: "15px", color: C.muted, letterSpacing: "1px", textAlign: "center", padding: "20px 0" }}>- AKHIR PEKAN -</p>;
-  if (items.length === 0) return <p style={{ fontSize: "15px", color: C.muted, letterSpacing: "1px", textAlign: "center", padding: "20px 0" }}>- TIDAK ADA KELAS -</p>;
+  if (!today) return <Empty>Akhir pekan, tidak ada kelas</Empty>;
+  if (items.length === 0) return <Empty>Tidak ada kelas lagi hari ini</Empty>;
 
   return items.map((item) => (
-    <div key={item.id} style={{ background: C.card, border: `1px solid ${C.border}`, borderLeft: `3px solid ${color}`, borderRadius: "6px", padding: "14px", display: "flex", flexDirection: "column", gap: "8px" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-        <span style={{ background: `${color}26`, border: `1px solid ${color}66`, borderRadius: "4px", padding: "3px 9px", fontSize: "13px", color: "#d0dcff", fontWeight: "400", letterSpacing: "0.3px" }}>
-          {trimSecs(item.jam_mulai)} - {trimSecs(item.jam_selesai)}
-        </span>
-        {item.kode_kelas && <span style={{ fontSize: "11px", color: C.sub, letterSpacing: "1px" }}>{item.kode_kelas}</span>}
+    <div key={item.id} style={{ display: "flex", gap: "14px", padding: "14px", borderRadius: "10px", background: UI.surface }}>
+      <div style={{ width: "48px", flexShrink: 0, fontSize: "14px", lineHeight: 1.35 }}>
+        <p style={{ fontWeight: 600, color: UI.text }}>{trimSecs(item.jam_mulai)}</p>
+        <p style={{ color: UI.sub }}>{trimSecs(item.jam_selesai)}</p>
       </div>
-      <p style={{ fontSize: "15px", fontWeight: "600", color: C.text, margin: 0 }}>{item.mata_kuliah}</p>
-      {item.nama_dosen && <p style={{ fontSize: "13px", color: C.text, margin: 0 }}>&gt; {item.nama_dosen}</p>}
-      {item.nama_dosen_2 && <p style={{ fontSize: "13px", color: C.text, margin: 0 }}>&gt; {item.nama_dosen_2}</p>}
-      {item.nama_dosen_3 && <p style={{ fontSize: "13px", color: C.text, margin: 0 }}>&gt; {item.nama_dosen_3}</p>}
+      <div style={{ minWidth: 0, display: "flex", flexDirection: "column", gap: "4px" }}>
+        <p style={{ fontSize: "15px", fontWeight: 600, color: UI.text, lineHeight: 1.35 }}>{item.mata_kuliah}</p>
+        {item.kode_kelas && <p style={{ fontSize: "13px", color: UI.sub }}>Kelas {item.kode_kelas}</p>}
+        {[item.nama_dosen, item.nama_dosen_2, item.nama_dosen_3].filter(Boolean).map((nama) => (
+          <p key={nama} style={{ fontSize: "14px", color: UI.sub, lineHeight: 1.4 }}>{nama}</p>
+        ))}
+      </div>
     </div>
   ));
 }
@@ -103,7 +108,7 @@ export function SchedulePanel({ roomName, roomData, loading, error }) {
 
   if (!roomName) return (
     <div style={{ ...panelStyle, alignItems: "center", justifyContent: "center" }}>
-      <p style={{ fontSize: "18px", color: "#ffffff", textAlign: "center", padding: "20px", letterSpacing: "0.5px" }}>
+      <p style={{ fontSize: "17px", color: UI.sub, textAlign: "center", padding: "24px", lineHeight: 1.5 }}>
         Pilih ruangan untuk melihat jadwal
       </p>
     </div>
@@ -111,7 +116,7 @@ export function SchedulePanel({ roomName, roomData, loading, error }) {
 
   if (loading || !roomData) return (
     <div style={{ ...panelStyle, alignItems: "center", justifyContent: "center" }}>
-      <p style={{ fontSize: "11px", color: C.muted, textAlign: "center", padding: "20px", letterSpacing: "0.5px" }}>
+      <p style={{ fontSize: "15px", color: UI.sub, textAlign: "center", padding: "24px" }}>
         {loading ? "Memuat..." : displayName(roomName)}
       </p>
     </div>
@@ -121,43 +126,27 @@ export function SchedulePanel({ roomName, roomData, loading, error }) {
 
   if (is_ruangan && !is_lab && !is_kelas && !is_ruang_dosen) return (
     <div style={panelStyle}>
-      <div style={{ padding: "20px 16px 14px", borderBottom: `1px solid ${C.border}`, borderLeft: `3px solid ${C.blue}`, background: `linear-gradient(90deg, ${C.blue}0d 0%, transparent 100%)` }}>
-        <p style={{ fontSize: "12px", letterSpacing: "2px", color: C.blue, marginBottom: "8px", textTransform: "uppercase", textShadow: `0 0 8px ${C.blue}` }}>
-          Informasi Ruangan
-        </p>
-        <p style={{ fontSize: "22px", fontWeight: "700", color: C.text, margin: "0 0 6px", letterSpacing: "1px" }}>{displayName(roomName)}</p>
-        <p style={{ fontSize: "16px", color: C.sub, margin: 0, letterSpacing: "0.5px" }}>{lantai ?? "-"}</p>
-      </div>
-      <div style={{ flex: 1, padding: "16px", display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <p style={{ fontSize: "14px", color: C.sub, letterSpacing: "1px" }}>{keterangan ?? displayName(roomName)}</p>
+      <Heading kind="Informasi ruangan" title={displayName(roomName)} subtitle={lantai ?? "-"} />
+      <div style={{ padding: "20px" }}>
+        <p style={{ fontSize: "15px", color: UI.text, lineHeight: 1.5 }}>{keterangan ?? displayName(roomName)}</p>
       </div>
     </div>
   );
 
-  const topLabel = is_lab ? "Laboratorium" : is_ruang_dosen ? "Ruang Dosen" : null;
-  const topColor = is_lab ? C.cyan : C.blue;
+  const topLabel = is_lab ? "Laboratorium" : is_ruang_dosen ? "Ruang dosen" : null;
 
   return (
     <div style={panelStyle}>
-      {topLabel && (
-        <div style={{ padding: "20px 16px 14px", borderBottom: `1px solid ${C.border}`, borderLeft: `3px solid ${topColor}`, background: `linear-gradient(90deg, ${topColor}0d 0%, transparent 100%)` }}>
-          <p style={{ fontSize: "12px", letterSpacing: "2px", color: topColor, marginBottom: "8px", textTransform: "uppercase", textShadow: `0 0 8px ${topColor}` }}>
-            {topLabel}
-          </p>
-          {keterangan && <p style={{ fontSize: "22px", fontWeight: "700", color: C.text, margin: "0 0 4px", letterSpacing: "1px" }}>{keterangan}</p>}
-          {!keterangan && <p style={{ fontSize: "22px", fontWeight: "700", color: C.text, margin: "0 0 4px", letterSpacing: "1px" }}>{displayName(roomName)}</p>}
-          <p style={{ fontSize: "16px", color: C.sub, margin: 0, letterSpacing: "0.5px" }}>{lantai ?? "-"}</p>
-        </div>
-      )}
+      {topLabel && <Heading kind={topLabel} title={keterangan || displayName(roomName)} subtitle={lantai ?? "-"} />}
 
       {is_ruang_dosen && (
-        <div style={{ padding: "16px", display: "flex", flexDirection: "column", gap: "10px", borderBottom: `1px solid ${C.border}` }}>
+        <div style={{ padding: "16px 20px", display: "flex", flexDirection: "column", gap: "12px", borderBottom: `1px solid ${UI.line}` }}>
           {occupants.length === 0
-            ? <p style={{ fontSize: "13px", color: C.muted, letterSpacing: "1px", margin: 0 }}>-</p>
+            ? <p style={{ fontSize: "14px", color: UI.sub }}>Belum ada data dosen</p>
             : occupants.map(({ kode, nama }) => (
-                <div key={kode} style={{ background: C.card, border: `1px solid ${C.border}`, borderLeft: `3px solid ${C.blue}`, borderRadius: "6px", padding: "14px", display: "flex", flexDirection: "column", alignItems: "center", gap: "10px" }}>
+                <div key={kode} style={{ display: "flex", alignItems: "center", gap: "12px" }}>
                   <DosenPhoto kode={kode} name={nama} />
-                  <span style={{ fontSize: "13px", color: C.text, lineHeight: 1.35, textAlign: "center" }}>{nama}</span>
+                  <span style={{ fontSize: "14px", color: UI.text, lineHeight: 1.4 }}>{nama}</span>
                 </div>
               ))
           }
@@ -166,17 +155,16 @@ export function SchedulePanel({ roomName, roomData, loading, error }) {
 
       {is_kelas && (
         <>
-          <div style={{ padding: "20px 16px 14px", borderBottom: `1px solid ${C.border}`, borderLeft: `3px solid ${C.blue}`, background: `linear-gradient(90deg, ${C.blue}0d 0%, transparent 100%)`, flexShrink: 0 }}>
-            <p style={{ fontSize: "12px", letterSpacing: "2px", color: C.blue, marginBottom: "8px", textTransform: "uppercase", textShadow: `0 0 8px ${C.blue}` }}>
-              Jadwal Kelas
-            </p>
-            {!topLabel && (
-              <p style={{ fontSize: "22px", fontWeight: "700", color: C.text, margin: "0 0 6px", letterSpacing: "1px" }}>{displayName(roomName)}</p>
-            )}
-            <p style={{ fontSize: "13px", color: C.sub, margin: 0, letterSpacing: "0.5px" }}>{today ?? "Akhir Pekan"}</p>
-          </div>
-          <div style={{ flex: 1, padding: "16px", display: "flex", flexDirection: "column", gap: "10px" }}>
-            <ScheduleItems items={daySchedule} color={C.blue} loading={false} error={error} today={today} />
+          {topLabel
+            ? (
+              <div style={{ padding: "18px 20px 0" }}>
+                <p style={{ fontSize: "16px", fontWeight: 600, color: UI.text }}>Jadwal kelas</p>
+                <p style={{ fontSize: "14px", color: UI.sub }}>{today ?? "Akhir pekan"}</p>
+              </div>
+            )
+            : <Heading kind="Jadwal kelas" title={displayName(roomName)} subtitle={today ?? "Akhir pekan"} />}
+          <div style={{ flex: 1, padding: "16px 20px 20px", display: "flex", flexDirection: "column", gap: "10px" }}>
+            <ScheduleItems items={daySchedule} loading={false} error={error} today={today} />
           </div>
         </>
       )}
